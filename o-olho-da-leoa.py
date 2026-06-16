@@ -69,13 +69,36 @@ def tela_login():
                     st.error(f"⚠️ Erro de conexão com o banco: {e}")
 
 # --- 5. Estruturas Base dos 3 Scripts ---
+# --- SUBSTITUA A FUNÇÃO script_manada_de_leao ---
 def script_manada_de_leao():
     st.header("🚙 Manada de Leão - Tático de Rua")
-    st.write(f"Líder da Viatura: **{st.session_state['nome_usuario']}**")
-    st.info("🚧 Módulo em Construção: Aqui entrará a Trava Logística e Seleção de Equipe.")
-    if st.button("Encerrar Sessão (Check-out)"):
-        st.session_state.clear()
-        st.rerun()
+    st.write(f"Líder: **{st.session_state['nome_usuario']}**")
+
+    # Verifica se o turno já está aberto
+    turno_ativo = supabase.table("controle_turnos").select("*").eq("lider_id", st.session_state['usuario_id']).eq(
+        "status", "Em Rota").execute()
+
+    if not turno_ativo.data:
+        st.subheader("📋 Início de Turno")
+        with st.form("checkin_turno"):
+            placa = st.text_input("Placa do Veículo (ex: ABC-1234)")
+            equipe = st.multiselect("Selecione a Equipe do Dia", options=["Motorista", "Influenciador", "Apoio"])
+            btn_iniciar = st.form_submit_button("Registrar Veículo e Estoque")
+
+            if btn_iniciar and placa:
+                # Cria o registro no banco
+                novo_turno = {
+                    "lider_id": st.session_state['usuario_id'],
+                    "placa_veiculo": placa,
+                    "equipe_ids": [1],  # Placeholder: Ajustaremos para pegar IDs reais da equipe
+                    "status": "Aguardando Estoque"
+                }
+                supabase.table("controle_turnos").insert(novo_turno).execute()
+                st.success("Veículo registrado! Agora, registre o estoque embarcado.")
+                st.rerun()
+    else:
+        st.success("✅ Turno em andamento. Foco na missão!")
+        # Aqui entraremos com a captação de eleitores em breve
 
 def script_a_selva():
     st.header("📱 A Selva - Radar de Influenciadores")
