@@ -37,9 +37,10 @@ def tela_login():
             botao_entrar = st.form_submit_button("Entrar")
 
             if botao_entrar:
+                usuario_limpo = usuario.strip()  # Limpa espaços no início e no fim
                 # O Guarda de Trânsito vai até o Supabase perguntar se a pessoa existe
                 try:
-                    resposta = supabase.table("rh_colaboradores").select("*").eq("nome", usuario).execute()
+                    resposta = supabase.table("rh_colaboradores").select("*").eq("nome", usuario_limpo).execute()
                     dados = resposta.data
 
                     if len(dados) > 0:
