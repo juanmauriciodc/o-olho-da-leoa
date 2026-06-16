@@ -37,36 +37,17 @@ def tela_login():
             botao_entrar = st.form_submit_button("Entrar")
 
             if botao_entrar:
-                usuario_limpo = usuario.strip()  # Limpa espaços no início e no fim
-                # O Guarda de Trânsito vai até o Supabase perguntar se a pessoa existe
-                try:
-                    resposta = supabase.table("rh_colaboradores").select("*").eq("nome", usuario_limpo).execute()
-                    dados = resposta.data
+                usuario_limpo = usuario.strip()
+                # Debug: vamos ver o que o banco retorna
+                resposta = supabase.table("rh_colaboradores").select("nome").execute()
+                st.write("Nomes encontrados no banco:", resposta.data)  # Isso vai listar tudo na tela
 
-                    if len(dados) > 0:
-                        usuario_db = dados[0]
-                        if usuario_db["ativo"]:
-                            # Libera a catraca
-                            st.session_state["logado"] = True
-                            st.session_state["nome_usuario"] = usuario_db["nome"]
-                            st.session_state["usuario_id"] = usuario_db["id"]
-
-                            # Roteamento baseado na Tag do Banco de Dados
-                            tag = usuario_db["tag"]
-                            if tag in ["Motorista", "Apoio"]:
-                                st.session_state["perfil"] = "Lider_Rua"
-                            elif tag == "Influenciador":
-                                st.session_state["perfil"] = "Influenciador"
-                            elif tag == "Coordenacao":
-                                st.session_state["perfil"] = "Coordenacao"
-
-                            st.rerun() # Recarrega a página para liberar a tela certa
-                        else:
-                            st.error("❌ Usuário inativo no sistema.")
-                    else:
-                        st.error("❌ Usuário não encontrado. Digite o nome exato.")
-                except Exception as e:
-                    st.error(f"⚠️ Erro de conexão com o banco: {e}")
+                # Busca específica
+                busca = supabase.table("rh_colaboradores").select("*").eq("nome", usuario_limpo).execute()
+                if len(busca.data) > 0:
+                # ... (mantém o resto do seu código de login aqui)
+                else:
+                    st.error(f"❌ Não achei '{usuario_limpo}'. Verifique se há espaços ou acentos.")
 
 # --- 5. Estruturas Base dos 3 Scripts ---
 # --- SUBSTITUA A FUNÇÃO script_manada_de_leao ---
