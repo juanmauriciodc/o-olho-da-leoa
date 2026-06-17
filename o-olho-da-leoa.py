@@ -36,18 +36,37 @@ def tela_login():
             usuario = st.text_input("Nome do Usuário")
             botao_entrar = st.form_submit_button("Entrar")
 
-            if botao_entrar:
+            if botao_entrar and usuario:  # Só entra se o campo usuario tiver algo
                 usuario_limpo = usuario.strip()
                 # Debug: vamos ver o que o banco retorna
                 resposta = supabase.table("rh_colaboradores").select("nome").execute()
-                st.write("Nomes encontrados no banco:", resposta.data)  # Isso vai listar tudo na tela
+                st.write("Nomes encontrados no banco:", resposta.data)
 
                 # Busca específica
                 busca = supabase.table("rh_colaboradores").select("*").eq("nome", usuario_limpo).execute()
+
                 if len(busca.data) > 0:
-                # ... (mantém o resto do seu código de login aqui)
+                    usuario_db = busca.data[0]
+                    if usuario_db["ativo"]:
+                        st.session_state["logado"] = True
+                        st.session_state["nome_usuario"] = usuario_db["nome"]
+                        st.session_state["usuario_id"] = usuario_db["id"]
+
+                        tag = usuario_db["tag"]
+
+                        # Alinhamento perfeito dos IFs e ELIFs de Tag
+                        if tag in ["Motorista", "Apoio"]:
+                            st.session_state["perfil"] = "Lider_Rua"
+                        elif tag == "Influenciador":
+                            st.session_state["perfil"] = "Influenciador"
+                        elif tag == "Coordenacao":
+                            st.session_state["perfil"] = "Coordenacao"
+
+                        st.rerun()
+                    else:
+                        st.error("❌ Usuário inativo no sistema.")
                 else:
-                    st.error(f"❌ Não achei '{usuario_limpo}'. Verifique se há espaços ou acentos.")
+                    st.error(f"❌ Não achei '{usuario_limpo}'.")
 
 # --- 5. Estruturas Base dos 3 Scripts ---
 # --- SUBSTITUA A FUNÇÃO script_manada_de_leao ---
