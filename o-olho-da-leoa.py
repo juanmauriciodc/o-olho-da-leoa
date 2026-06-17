@@ -59,6 +59,52 @@ def script_manada_de_leao():
     st.write(f"Líder Escalonado: **{st.session_state['nome_usuario']}**")
     st.markdown("---")
 
+    def script_manada_de_leao():
+        st.header("🚙 Manada de Leão - Tático de Rua")
+        st.write(f"Líder Escalonado: **{st.session_state['nome_usuario']}**")
+        st.markdown("---")
+
+        # === 🎯 BLOCO DE DESAFIO LANÇADO (VISÃO DO LÍDER) ===
+        try:
+            # Busca a meta no banco
+            config_db = supabase.table("configuracoes_globais").select("*").eq("id", 1).execute().data
+            if config_db:
+                meta = config_db[0]
+                mult = meta['multiplicador_equipe']
+                meta_adesivos = meta['meta_adesivos']
+
+                # Cálculo de progresso (Simulado ou Real baseado no turno atual)
+                # Aqui buscamos quantos adesivos o turno atual já registrou como sobra ou saída
+                progresso_atual = 0
+                if st.session_state.get("turno_id_atual"):
+                    # Busca material embarcado menos o que o influencer relatou (ou lógica similar)
+                    # Para este banner ser rápido, vamos focar em mostrar o DESAFIO
+                    pass
+
+                st.markdown(
+                    f"""
+                    <div style="background-color: #E8F4F8; padding: 20px; border-radius: 15px; border: 2px solid #0078D4; margin-bottom: 25px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h2 style="margin: 0; color: #004B87; font-size: 24px;">🚀 DESAFIO LANÇADO!</h2>
+                            <span style="background-color: #0078D4; color: white; padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 20px;">
+                                {mult}x Pontos
+                            </span>
+                        </div>
+                        <p style="color: #1E1E1E; margin: 10px 0; font-size: 16px;">
+                            A coordenação definiu uma meta de <b>{meta_adesivos} adesivos</b> no peito para este turno. 
+                            Ao bater a meta, toda a sua equipe recebe o multiplicador de pontos em tempo real!
+                        </p>
+                        <div style="background-color: #D1EAF1; border-radius: 10px; height: 15px; width: 100%; margin-top: 10px;">
+                            <div style="background-color: #0078D4; height: 15px; width: 45%; border-radius: 10px;"></div>
+                        </div>
+                        <p style="text-align: right; margin: 5px 0 0 0; font-size: 12px; color: #004B87;">🏁 Meta: {meta_adesivos} adesivos</p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+        except Exception:
+            pass
+
     if "turno_ativo" not in st.session_state: st.session_state["turno_ativo"] = False
     if "turno_id_atual" not in st.session_state: st.session_state["turno_id_atual"] = None
     if "viatura_atual" not in st.session_state: st.session_state["viatura_atual"] = None
