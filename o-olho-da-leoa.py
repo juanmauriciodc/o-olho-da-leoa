@@ -266,38 +266,107 @@ def script_a_selva():
 
 # --- Script 3: O Olho da Leoa (Sala de Guerra) ---
 def script_o_olho_da_leoa():
-    st.title("👁️ O Olho da Leoa - Sala de Guerra C3")
-    st.write("Bem-vindo ao Painel Mestre de Inteligência e Comando.")
+    st.title("👁️ O Olho da Leoa - Comando C3")
+    st.write("A central de inteligência e controle de toda a operação.")
     st.markdown("---")
 
-    # O Sistema de Abas Inteligentes
+    # O Sistema de Abas Inteligentes e Temáticas
     aba1, aba2, aba3, aba4 = st.tabs([
-        "📊 Coliseu de Dados (Dashboards)",
-        "🏆 Ranking da Selva (Gamificação)",
-        "🕵️ Módulo Auditoria",
-        "🗃️ Painel de Controle (CRUD)"
+        "👁️ Visão da Leoa",
+        "👑 Reis da Selva",
+        "🔎 O Covil",
+        "🐾 Controle da Manada"
     ])
 
     with aba1:
-        st.header("Coliseu de Dados")
-        st.info("Aqui entrarão os gráficos de Índice de Aceitação, Leads por Local, Pesquisas por Região e Controle de Materiais.")
+        st.header("👁️ Visão da Leoa")
+        st.info(
+            "Aqui entrarão os gráficos de Índice de Aceitação, Leads por Local, Pesquisas por Região e Controle de Materiais.")
 
     with aba2:
-        st.header("Ranking Gamificado")
+        st.header("👑 Reis da Selva")
         st.info("Aqui entrarão os Placares Gerais e o Top 1 por Função (Líder, Motorista, Influencer, Apoio).")
 
     with aba3:
-        st.header("Auditoria de Postagens")
+        st.header("🔎 O Covil (Auditoria)")
         st.info("Aqui o C3 vai validar as fotos da nuvem contra o código gerado na Selva e aprovar/estornar pontos.")
 
     with aba4:
-        st.header("Painel de Controle e Gestão")
-        st.info("Aqui criaremos as tabelas e formulários para adicionar e editar Rotas, Usuários e Candidatos.")
+        st.header("🐾 Controle da Manada")
+        st.write("Gerencie os territórios de atuação e o radar da operação.")
 
-# --- 6. Roteamento Principal (O Guarda de Trânsito) ---
-if not st.session_state["logado"]:
-    tela_login()
-else:
-    if st.session_state["perfil"] == "Lider_Rua": script_manada_de_leao()
-    elif st.session_state["perfil"] == "Influenciador": script_a_selva()
-    elif st.session_state["perfil"] == "Coordenacao": script_o_olho_da_leoa()
+        # Sub-abas para organizar o painel de controle
+        tab_rotas, tab_candidatos = st.tabs(["📍 Territórios de Caça (Rotas)", "🦁 Realeza (Candidatos)"])
+
+        with tab_rotas:
+            st.subheader("Mapear Novo Território (Despachar Rota)")
+            with st.form("form_rotas", clear_on_submit=True):
+                col1, col2 = st.columns(2)
+                with col1:
+                    nome_rota = st.text_input("Nome da Operação (Ex: Invasão UnB)")
+                    # Aqui a regiao que você pediu entra em ação!
+                    regiao = st.selectbox("Macrorregião",
+                                          ["Plano Piloto", "Asa Norte", "Asa Sul", "Taguatinga", "Ceilândia", "Gama",
+                                           "Águas Claras", "Outras"])
+                with col2:
+                    bairro_alvo = st.text_input("Bairro / Ponto Específico")
+                    status_inicial = st.selectbox("Status", ["Pendente"])  # O sistema força a ser pendente
+
+                descricao = st.text_area("Instruções da Missão (Visível para o Líder no carro)")
+
+                if st.form_submit_button("Despachar para a Manada"):
+                    if not nome_rota or not bairro_alvo:
+                        st.error("Preencha o Nome da Rota e o Bairro Alvo!")
+                    else:
+                        try:
+                            supabase.table("planejamento_rotas").insert({
+                                "nome_rota": nome_rota,
+                                "regiao": regiao,
+                                "bairro_alvo": bairro_alvo,
+                                "descricao": descricao,
+                                "status": "Pendente"
+                            }).execute()
+                            st.success("✅ Território mapeado! A rota já está na fila dos carros na rua.")
+                        except Exception as e:
+                            st.error(f"Erro ao salvar rota no banco: {e}")
+
+            st.markdown("---")
+            st.subheader("🗺️ Territórios Atuais (Fila de Espera)")
+            try:
+                # O C3 consegue ver quais rotas ainda não foram feitas
+                resp_rotas = supabase.table("planejamento_rotas").select("*").eq("status", "Pendente").execute()
+                if resp_rotas.data:
+                    df_rotas = pd.DataFrame(resp_rotas.data)
+                    # Exibe uma tabela bonita escondendo os IDs técnicos
+                    st.dataframe(df_rotas[["nome_rota", "regiao", "bairro_alvo", "descricao"]],
+                                 use_container_width=True)
+                else:
+                    st.success("🎉 Todas as rotas já foram concluídas pela Manada!")
+            except:
+                st.warning("Não foi possível carregar a fila de rotas.")
+
+        with tab_candidatos:
+            st.subheader("Adicionar Nome ao Radar de Pesquisas")
+            with st.form("form_candidatos", clear_on_submit=True):
+                nome_cand = st.text_input("Nome do Candidato ou Partido")
+                if st.form_submit_button("Registrar no Sistema"):
+                    if nome_cand:
+                        try:
+                            supabase.table("candidatos").insert({"nome": nome_cand.strip(), "ativo": True}).execute()
+                            st.success(f"✅ {nome_cand} adicionado ao radar dos líderes de rua!")
+                        except Exception as e:
+                            st.error(f"Erro ao adicionar candidato: {e}")
+                    else:
+                        st.warning("⚠️ Digite um nome válido.")
+
+            st.markdown("---")
+            st.subheader("🦁 Radar Atual (Candidatos Ativos na Rua)")
+            try:
+                resp_cand = supabase.table("candidatos").select("*").eq("ativo", True).execute()
+                if resp_cand.data:
+                    for c in resp_cand.data:
+                        st.write(f"▪️ **{c['nome']}**")
+                else:
+                    st.info("Nenhum candidato cadastrado no momento.")
+            except:
+                pass
