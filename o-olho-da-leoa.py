@@ -30,7 +30,6 @@ def tela_login():
     with col2:
         st.title("🦁 O Olho da Leoa")
         st.subheader("Acesso Restrito")
-        st.markdown("---")
 
         with st.form("form_login"):
             usuario = st.text_input("Nome do Usuário")
@@ -46,12 +45,66 @@ def tela_login():
                         st.session_state["usuario_id"] = usuario_db["id"]
                         tag = usuario_db["tag"]
 
-                        if tag in ["Motorista", "Apoio"]: st.session_state["perfil"] = "Lider_Rua"
-                        elif tag == "Influenciador": st.session_state["perfil"] = "Influenciador"
-                        elif tag == "Coordenacao": st.session_state["perfil"] = "Coordenacao"
+                        if tag in ["Motorista", "Apoio"]:
+                            st.session_state["perfil"] = "Lider_Rua"
+                        elif tag == "Influenciador":
+                            st.session_state["perfil"] = "Influenciador"
+                        elif tag == "Coordenacao":
+                            st.session_state["perfil"] = "Coordenacao"
                         st.rerun()
-                    else: st.error("❌ Usuário inativo no sistema.")
-                else: st.error("❌ Usuário não encontrado.")
+                    else:
+                        st.error("❌ Usuário inativo no sistema.")
+                else:
+                    st.error("❌ Usuário não encontrado.")
+
+        # === NOVO: CANAL DE FEEDBACK ANÔNIMO ===
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        st.markdown("---")
+        st.subheader("🗣️ Ouvidoria da Alcateia (Canal Anônimo)")
+        st.write("Tem algo a dizer? Este canal é 100% confidencial. O sistema não registra quem enviou a mensagem.")
+
+        # 1. Puxar nomes dos colaboradores para a lista
+        try:
+            resp_colab = supabase.table("rh_colaboradores").select("nome").eq("ativo", True).order("nome").execute()
+            lista_nomes = [c["nome"] for c in resp_colab.data]
+        except Exception:
+            lista_nomes = []
+
+        # 2. Escolha dinâmica (Fora do form para atualizar as opções abaixo)
+        tipo_feedback = st.radio("Qual o tipo de mensagem?", ["🌟 Elogio", "⚠️ Crítica", "🚨 Denúncia"], horizontal=True)
+
+        # Configura as opções dependendo do tipo de feedback
+        if tipo_feedback == "🌟 Elogio":
+            opcoes_alvo = ["Selecione a pessoa..."] + lista_nomes
+        else:
+            opcoes_alvo = ["Selecione o alvo..."] + lista_nomes + ["📍 Rotas", "🚙 Carro/Viatura", "📦 Material", "Outros"]
+
+        # 3. Formulário de Envio
+        with st.form("form_ouvidoria", clear_on_submit=True):
+            alvo = st.selectbox("Sobre quem ou o quê?", opcoes_alvo)
+            mensagem = st.text_area("Descreva o motivo com detalhes:",
+                                    placeholder="Sua mensagem é segura e sigilosa...")
+
+            btn_enviar_feedback = st.form_submit_button("📩 Enviar Anonimamente")
+
+            if btn_enviar_feedback:
+                if alvo in ["Selecione a pessoa...", "Selecione o alvo..."]:
+                    st.warning("⚠️ Por favor, selecione sobre quem ou o que é a sua mensagem.")
+                elif len(mensagem.strip()) < 5:
+                    st.warning("⚠️ Escreva um pouco mais de detalhes na sua mensagem.")
+                else:
+                    try:
+                        # Salva no banco (Lembre-se de criar a tabela 'canal_feedback')
+                        # Note que NÃO estamos enviando o ID de quem escreveu. É 100% anônimo!
+                        supabase.table("canal_feedback").insert({
+                            "tipo": tipo_feedback.replace("🌟 ", "").replace("⚠️ ", "").replace("🚨 ", ""),
+                            "alvo": alvo,
+                            "mensagem": mensagem.strip()
+                        }).execute()
+                        st.success(
+                            "✅ Sua mensagem foi enviada diretamente para a Coordenação Geral. Obrigado por ajudar a melhorar nossa operação!")
+                    except Exception as e:
+                        st.error(f"Erro ao enviar. Verifique se a tabela 'canal_feedback' existe. Detalhes: {e}")
 
 # --- 5. Script 1: Manada de Leão ---
 def script_manada_de_leao():
@@ -584,7 +637,52 @@ def script_o_olho_da_leoa():
                         st.error(f"Erro ao salvar configurações. Crie a tabela 'configuracoes_globais'. Detalhes: {e}")
 
     with aba3: st.info("Auditoria")
+        st.header("🔎 O Covil - Central de Ouvidoria e Auditoria")
+        st.write(
+            "Acompanhe o sentimento da base. Todas as mensagens recebidas aqui são estritamente confidenciais e anônimas.")
+        st.markdown("---")
 
+        try:
+            # Busca todos os feedbacks registrados
+            resp_feedback = supabase.table("canal_feedback").select("*").order("created_at", ascending=False).execute()
+
+            if resp_feedback.data:
+                df_feed = pd.DataFrame(resp_feedback.data)
+
+                # Criando as abas de filtro visual para a coordenação ler com facilidade
+                tab_elogios, tab_criticas, tab_denuncias = st.tabs(["🌟 Elogios", "⚠️ Críticas", "🚨 Denúncias"])
+
+                def exibir_mensagens(df, tipo_alvo):
+                    df_filtrado = df[df["tipo"] == tipo_alvo]
+                    if df_filtrado.empty:
+                        st.info(f"Nenhum(a) {tipo_alvo.lower()} registrado(a).")
+                    else:
+                        for _, row in df_filtrado.iterrows():
+                            # Formatando a data de forma amigável
+                            data_formatada = row['created_at'][:10]
+
+                            st.markdown(
+                                f"""
+                                    <div style="background-color: #F8F9FA; padding: 15px; border-radius: 10px; border-left: 5px solid {'#FFD700' if tipo_alvo == 'Elogio' else '#FF8C00' if tipo_alvo == 'Crítica' else '#DC3545'}; margin-bottom: 10px;">
+                                        <p style="margin: 0; font-size: 12px; color: #6C757D;">Data: {data_formatada} | Alvo: <strong>{row['alvo']}</strong></p>
+                                        <p style="margin: 10px 0 0 0; font-size: 16px; color: #1E1E1E;">"{row['mensagem']}"</p>
+                                    </div>
+                                    """, unsafe_allow_html=True
+                            )
+
+                with tab_elogios:
+                    exibir_mensagens(df_feed, "Elogio")
+
+                with tab_criticas:
+                    exibir_mensagens(df_feed, "Crítica")
+
+                with tab_denuncias:
+                    exibir_mensagens(df_feed, "Denúncia")
+            else:
+                st.info("A caixa de Ouvidoria está vazia no momento.")
+
+        except Exception as e:
+            st.error(f"Erro ao carregar dados da ouvidoria. Crie a tabela 'canal_feedback'. Detalhe: {e}")
     with aba4:
         st.header("🐾 Controle da Manada (Despacho)")
 
