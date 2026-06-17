@@ -43,7 +43,7 @@ def tela_login():
                 st.write("Nomes encontrados no banco:", resposta.data)
 
                 # Busca específica
-                busca = supabase.table("rh_colaboradores").select("*").eq("nome", usuario_limpo).execute()
+                busca = supabase.table("rh_colaboradores").select("*").ilike("nome", usuario_limpo).execute()
 
                 if len(busca.data) > 0:
                     usuario_db = busca.data[0]
@@ -73,56 +73,138 @@ def tela_login():
 def script_manada_de_leao():
     st.header("🚙 Manada de Leão - Tático de Rua")
     st.write(f"Líder: **{st.session_state['nome_usuario']}**")
+    st.markdown("---")
 
-    # Verifica se o turno já está aberto
-    turno_ativo = supabase.table("controle_turnos").select("*").eq("lider_id", st.session_state['usuario_id']).eq(
-        "status", "Em Rota").execute()
+    if "turno_ativo" not in st.session_state:
+        st.session_state["turno_ativo"] = False
+    if "turno_id_atual" not in st.session_state:
+        st.session_state["turno_id_atual"] = None
 
-    if not turno_ativo.data:
+    # --- 1. TELA DE ABERTURA DE TURNO ---
+    if not st.session_state["turno_ativo"]:
         st.subheader("📋 Início de Turno")
-        with st.form("checkin_turno"):
+
+        # Puxar colaboradores ativos do Supabase para o Dropdown (excluindo o próprio líder)
+        try:
+            resp_colab = supabase.table("rh_colaboradores").select("id, nome, tag").eq("ativo", True).execute()
+            lista_colaboradores = [c for c in resp_colab.data if c["id"] != st.session_state["usuario_id"]]
+            opcoes_equipe = {f"{c['nome']} ({c['tag']})": c['id'] for c in lista_colaboradores}
+        except Exception as e:
+            st.error(f"Erro ao carregar equipe: {e}")
+            opcoes_equipe = {}
+
+        with st.form("form_abertura_turno"):
             placa = st.text_input("Placa do Veículo (ex: ABC-1234)")
-            equipe = st.multiselect("Selecione a Equipe do Dia", options=["Motorista", "Influenciador", "Apoio"])
+
+            equipe_nomes = st.multiselect(
+                "Selecione a Equipe do Dia",
+                options=list(opcoes_equipe.keys())
+            )
+
+            st.markdown("---")
+            st.markdown("📦 **Estoque de Materiais (Trava Logística)**")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                panfletos = st.number_input("Panfletos (Qtd)", min_value=0, step=50)
+            with col2:
+                adesivos = st.number_input("Adesivos de Carro", min_value=0, step=10)
+            with col3:
+                bandeiras = st.number_input("Bandeiras", min_value=0, step=1)
+
             btn_iniciar = st.form_submit_button("Registrar Veículo e Estoque")
 
-            if btn_iniciar and placa:
-                # Cria o registro no banco
-                novo_turno = {
-                    "lider_id": st.session_state['usuario_id'],
-                    "placa_veiculo": placa,
-                    "equipe_ids": [1],  # Placeholder: Ajustaremos para pegar IDs reais da equipe
-                    "status": "Aguardando Estoque"
-                }
-                supabase.table("controle_turnos").insert(novo_turno).execute()
-                st.success("Veículo registrado! Agora, registre o estoque embarcado.")
-                st.rerun()
+            if btn_iniciar:
+                if not placa:
+                    st.error("❌ A Placa do veículo é obrigatória!")
+                elif len(equipe_nomes) == 0:
+                    st.error("❌ Selecione pelo menos um membro para a equipe!")
+                elif panfletos == 0 and adesivos == 0 and bandeiras == 0:
+                    st.error("🛑 Trava Logística Ativada: É obrigatório registrar o material embarcado!")
+                else:
+                    # Mapear os nomes selecionados para seus IDs
+                    equipe_ids = [opcoes_equipe[nome] for nome in equipe_nomes]
+
+                    # 1. INSERT na tabela controle_turnos
+                    dados_turno = {
+                        "lider_id": st.session_state["usuario_id"],
+                        "placa_veiculo": placa.upper(),
+                        "equipe_ids": equipe_ids  # Assumindo que a coluna é um array de INT ou JSONB
+                    }
+                    res_turno = supabase.table("controle_turnos").insert(dados_turno).execute()
+
+                    if res_turno.data:
+                        novo_turno_id = res_turno.data[0]["id"]
+
+                        # 2. INSERT na tabela estoque_materiais
+                        dados_estoque = {
+                            "turno_id": novo_turno_id,
+                            "panfletos_retirados": panfletos,
+                            "adesivos_retirados": adesivos,
+                            "bandeiras_retiradas": bandeiras
+                        }
+                        supabase.table("estoque_materiais").insert(dados_estoque).execute()
+
+                        # Atualiza a sessão
+                        st.session_state["turno_id_atual"] = novo_turno_id
+                        st.session_state["turno_ativo"] = True
+                        st.success("✅ Veículo e estoque registrados! Missão liberada.")
+                        st.rerun()
+
+    # --- 2. TELA DA RUA (Operação e Check-out) ---
     else:
-        st.success("✅ Turno em andamento. Foco na missão!")
-        # Aqui entraremos com a captação de eleitores em breve
+        st.success(f"✅ Turno #{st.session_state['turno_id_atual']} ativo! Viatura na rua.")
+        st.markdown("---")
 
-def script_a_selva():
-    st.header("📱 A Selva - Radar de Influenciadores")
-    st.write(f"Influenciador(a): **{st.session_state['nome_usuario']}**")
-    st.info("🚧 Módulo em Construção: Aqui entrará o Cadastro de Postagens.")
-    if st.button("Encerrar Sessão"):
-        st.session_state.clear()
-        st.rerun()
+        # Módulo de Captação Rápida (Exemplo estrutural para captura_eleitores)
+        st.subheader("📱 Captação de Eleitores")
+        with st.form("form_captura"):
+            col_nome, col_zap = st.columns(2)
+            with col_nome:
+                nome_eleitor = st.text_input("Nome do Eleitor")
+            with col_zap:
+                zap_eleitor = st.text_input("WhatsApp (com DDD)")
+            bairro_eleitor = st.text_input("Bairro")
 
-def script_o_olho_da_leoa():
-    st.header("👁️ O Olho da Leoa - Sala de Guerra (C3)")
-    st.write(f"Comandante logado: **{st.session_state['nome_usuario']}**")
-    st.info("🚧 Módulo em Construção: Aqui entrará o Despacho de Carros e Dashboards.")
-    if st.button("Encerrar Sessão"):
-        st.session_state.clear()
-        st.rerun()
+            if st.form_submit_button("Salvar Contato"):
+                if nome_eleitor and zap_eleitor:
+                    supabase.table("captura_eleitores").insert({
+                        "turno_id": st.session_state["turno_id_atual"],
+                        "nome": nome_eleitor,
+                        "whatsapp": zap_eleitor,
+                        "bairro": bairro_eleitor
+                    }).execute()
+                    st.toast("✅ Contato salvo e enviado ao banco!")
+                else:
+                    st.warning("Preencha Nome e WhatsApp.")
 
-# --- 6. O Roteador Principal ---
-if not st.session_state["logado"]:
-    tela_login()
-else:
-    if st.session_state["perfil"] == "Lider_Rua":
-        script_manada_de_leao()
-    elif st.session_state["perfil"] == "Influenciador":
-        script_a_selva()
-    elif st.session_state["perfil"] == "Coordenacao":
-        script_o_olho_da_leoa()
+        st.markdown("---")
+
+        # Módulo de Check-out e Clima da Rua
+        st.subheader("🏁 Encerrar Rota (Check-out)")
+        with st.form("form_checkout"):
+            clima = st.radio("Qual o nível de aceitação da rua nesta rota?",
+                             ["🤩 Ótimo", "🙂 Bom", "😐 Regular", "🛑 Baixo"], horizontal=True)
+
+            justificativa = ""
+            if clima == "🛑 Baixo":
+                justificativa = st.text_input("⚠️ Motivo do abandono ou baixa aceitação (Obrigatório)")
+
+            btn_encerrar = st.form_submit_button("Registrar Clima e Encerrar Turno")
+
+            if btn_encerrar:
+                if clima == "🛑 Baixo" and not justificativa.strip():
+                    st.error("🛑 Você deve justificar o motivo de classificar o clima como 'Baixo'.")
+                else:
+                    # INSERT na tabela rotas_e_clima
+                    dados_clima = {
+                        "turno_id": st.session_state["turno_id_atual"],
+                        "clima_rua": clima,
+                        "justificativa_abandono": justificativa
+                    }
+                    supabase.table("rotas_e_clima").insert(dados_clima).execute()
+
+                    # Reseta o ciclo
+                    st.session_state["turno_ativo"] = False
+                    st.session_state["turno_id_atual"] = None
+                    st.success("🏁 Turno encerrado com sucesso. Relatório enviado ao Olho da Leoa.")
+                    st.rerun()
