@@ -636,10 +636,9 @@ def script_o_olho_da_leoa():
                     except Exception as e:
                         st.error(f"Erro ao salvar configurações. Crie a tabela 'configuracoes_globais'. Detalhes: {e}")
 
-    with aba3: st.info("Auditoria")
+    with aba3:
         st.header("🔎 O Covil - Central de Ouvidoria e Auditoria")
-        st.write(
-            "Acompanhe o sentimento da base. Todas as mensagens recebidas aqui são estritamente confidenciais e anônimas.")
+        st.write("Acompanhe o sentimento da base. Todas as mensagens recebidas aqui são estritamente confidenciais e anônimas.")
         st.markdown("---")
 
         try:
@@ -663,11 +662,11 @@ def script_o_olho_da_leoa():
 
                             st.markdown(
                                 f"""
-                                    <div style="background-color: #F8F9FA; padding: 15px; border-radius: 10px; border-left: 5px solid {'#FFD700' if tipo_alvo == 'Elogio' else '#FF8C00' if tipo_alvo == 'Crítica' else '#DC3545'}; margin-bottom: 10px;">
-                                        <p style="margin: 0; font-size: 12px; color: #6C757D;">Data: {data_formatada} | Alvo: <strong>{row['alvo']}</strong></p>
-                                        <p style="margin: 10px 0 0 0; font-size: 16px; color: #1E1E1E;">"{row['mensagem']}"</p>
-                                    </div>
-                                    """, unsafe_allow_html=True
+                                <div style="background-color: #F8F9FA; padding: 15px; border-radius: 10px; border-left: 5px solid {'#FFD700' if tipo_alvo == 'Elogio' else '#FF8C00' if tipo_alvo == 'Crítica' else '#DC3545'}; margin-bottom: 10px;">
+                                    <p style="margin: 0; font-size: 12px; color: #6C757D;">Data: {data_formatada} | Alvo: <strong>{row['alvo']}</strong></p>
+                                    <p style="margin: 10px 0 0 0; font-size: 16px; color: #1E1E1E;">"{row['mensagem']}"</p>
+                                </div>
+                                """, unsafe_allow_html=True
                             )
 
                 with tab_elogios:
@@ -683,6 +682,7 @@ def script_o_olho_da_leoa():
 
         except Exception as e:
             st.error(f"Erro ao carregar dados da ouvidoria. Crie a tabela 'canal_feedback'. Detalhe: {e}")
+
     with aba4:
         st.header("🐾 Controle da Manada (Despacho)")
 
