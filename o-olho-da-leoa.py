@@ -72,73 +72,94 @@ def script_manada_de_leao():
     if "turno_id_atual" not in st.session_state:
         st.session_state["turno_id_atual"] = None
 
-    # ==========================================
-    # TELA DE ABERTURA DE TURNO (Logística)
-    # ==========================================
-    if not st.session_state["turno_ativo"]:
-        st.subheader("📋 Abertura de Turno e Check-in")
+        # ==========================================
+        # TELA DE ABERTURA DE TURNO (Logística)
+        # ==========================================
+        if not st.session_state["turno_ativo"]:
+            st.subheader("📋 Abertura de Turno e Check-in")
 
-        try:
-            resp_colab = supabase.table("rh_colaboradores").select("id, nome, tag").eq("ativo", True).execute()
-            lista_colaboradores = [c for c in resp_colab.data if c["id"] != st.session_state["usuario_id"]]
-            opcoes_equipe = {f"{c['nome']} ({c['tag']})": c['id'] for c in lista_colaboradores}
-        except Exception as e:
-            st.error(f"Erro de conexão com o RH: {e}")
-            opcoes_equipe = {}
+            try:
+                resp_colab = supabase.table("rh_colaboradores").select("id, nome, tag").eq("ativo", True).execute()
+                lista_colaboradores = [c for c in resp_colab.data if c["id"] != st.session_state["usuario_id"]]
 
-        with st.form("form_abertura_turno"):
-            placa = st.text_input("Placa do Veículo (ex: ABC-1234)")
-            equipe_nomes = st.multiselect("Selecione a Equipe do Dia", options=list(opcoes_equipe.keys()))
+                # Inteligência de Filtro: O sistema separa as pessoas pelas tags automaticamente
+                motoristas = {c['nome']: c['id'] for c in lista_colaboradores if c['tag'] == 'Motorista'}
+                influenciadores = {c['nome']: c['id'] for c in lista_colaboradores if c['tag'] == 'Influenciador'}
+                apoios = {c['nome']: c['id'] for c in lista_colaboradores if c['tag'] == 'Apoio'}
+            except Exception as e:
+                st.error(f"Erro de conexão com o RH: {e}")
+                motoristas, influenciadores, apoios = {}, {}, {}
 
-            st.markdown("---")
-            st.markdown("📦 **Trava Logística: Material Embarcado**")
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                panfletos = st.number_input("Panfletos (Unidades)", min_value=0, step=50)
-            with col2:
-                adesivos = st.number_input("Adesivos (Unidades)", min_value=0, step=10)
-            with col3:
-                bandeiras = st.number_input("Bandeiras (Unidades)", min_value=0, step=1)
+            with st.form("form_abertura_turno"):
+                placa = st.text_input("Placa do Veículo (ex: ABC-1234)")
 
-            btn_iniciar = st.form_submit_button("🚀 Iniciar Missão")
+                st.markdown("👥 **Montagem da Equipe (Filtrada por Função)**")
+                col_mot, col_inf, col_apo = st.columns(3)
+                with col_mot:
+                    sel_mot = st.multiselect("Motorista(s)", options=list(motoristas.keys()))
+                with col_inf:
+                    sel_inf = st.multiselect("Influenciador(es)", options=list(influenciadores.keys()))
+                with col_apo:
+                    sel_apo = st.multiselect("Apoio(s)", options=list(apoios.keys()))
 
-            if btn_iniciar:
-                if not placa:
-                    st.error("❌ A Placa do veículo é obrigatória!")
-                elif len(equipe_nomes) == 0:
-                    st.error("❌ O carro não pode sair vazio. Selecione a equipe!")
-                elif panfletos == 0 and adesivos == 0 and bandeiras == 0:
-                    st.error("🛑 Trava Logística: Registre ao menos um tipo de material embarcado!")
-                else:
-                    try:
-                        equipe_ids = [opcoes_equipe[nome] for nome in equipe_nomes]
+                st.markdown("---")
+                st.markdown("📦 **Trava Logística: Material Embarcado**")
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    panfletos = st.number_input("Panfletos (Unidades)", min_value=0, step=50)
+                with col2:
+                    adesivos = st.number_input("Adesivos (Unidades)", min_value=0, step=10)
+                with col3:
+                    bandeiras = st.number_input("Bandeiras (Unidades)", min_value=0, step=1)
 
-                        # Grava o Turno
-                        dados_turno = {
-                            "lider_id": st.session_state["usuario_id"],
-                            "placa_veiculo": placa.upper(),
-                            "equipe_ids": equipe_ids
-                        }
-                        res_turno = supabase.table("controle_turnos").insert(dados_turno).execute()
-                        novo_turno_id = res_turno.data[0]["id"]
+                btn_iniciar = st.form_submit_button("🚀 Iniciar Missão")
 
-                        # Grava os Materiais Separadamente
-                        materiais_para_inserir = [
-                            {"turno_id": novo_turno_id, "material_nome": "Panfletos", "qtd_embarcada": panfletos, "qtd_sobra": 0},
-                            {"turno_id": novo_turno_id, "material_nome": "Adesivos", "qtd_embarcada": adesivos, "qtd_sobra": 0},
-                            {"turno_id": novo_turno_id, "material_nome": "Bandeiras", "qtd_embarcada": bandeiras, "qtd_sobra": 0}
-                        ]
-                        materiais_para_inserir = [m for m in materiais_para_inserir if m["qtd_embarcada"] > 0]
+                if btn_iniciar:
+                    # Junta todo mundo que foi selecionado para verificar se o carro não está vazio
+                    equipe_total = sel_mot + sel_inf + sel_apo
 
-                        if materiais_para_inserir:
-                            supabase.table("estoque_materiais").insert(materiais_para_inserir).execute()
+                    if not placa:
+                        st.error("❌ A Placa do veículo é obrigatória!")
+                    elif len(equipe_total) == 0:
+                        st.error("❌ O carro não pode sair vazio. Selecione a equipe!")
+                    elif panfletos == 0 and adesivos == 0 and bandeiras == 0:
+                        st.error("🛑 Trava Logística: Registre ao menos um tipo de material embarcado!")
+                    else:
+                        try:
+                            # Pega o ID no banco de dados de cada pessoa selecionada
+                            equipe_ids = [motoristas[n] for n in sel_mot] + \
+                                         [influenciadores[n] for n in sel_inf] + \
+                                         [apoios[n] for n in sel_apo]
 
-                        st.session_state["turno_id_atual"] = novo_turno_id
-                        st.session_state["turno_ativo"] = True
-                        st.rerun()
+                            # Grava o Turno
+                            dados_turno = {
+                                "lider_id": st.session_state["usuario_id"],
+                                "placa_veiculo": placa.upper(),
+                                "equipe_ids": equipe_ids
+                            }
+                            res_turno = supabase.table("controle_turnos").insert(dados_turno).execute()
+                            novo_turno_id = res_turno.data[0]["id"]
 
-                    except Exception as e:
-                        st.error(f"🚨 Erro no banco de dados: {str(e)}")
+                            # Grava os Materiais Separadamente
+                            materiais_para_inserir = [
+                                {"turno_id": novo_turno_id, "material_nome": "Panfletos", "qtd_embarcada": panfletos,
+                                 "qtd_sobra": 0},
+                                {"turno_id": novo_turno_id, "material_nome": "Adesivos", "qtd_embarcada": adesivos,
+                                 "qtd_sobra": 0},
+                                {"turno_id": novo_turno_id, "material_nome": "Bandeiras", "qtd_embarcada": bandeiras,
+                                 "qtd_sobra": 0}
+                            ]
+                            materiais_para_inserir = [m for m in materiais_para_inserir if m["qtd_embarcada"] > 0]
+
+                            if materiais_para_inserir:
+                                supabase.table("estoque_materiais").insert(materiais_para_inserir).execute()
+
+                            st.session_state["turno_id_atual"] = novo_turno_id
+                            st.session_state["turno_ativo"] = True
+                            st.rerun()
+
+                        except Exception as e:
+                            st.error(f"🚨 Erro no banco de dados: {str(e)}")
 
     # ==========================================
     # TELA DA RUA (Operação Tática)
