@@ -3,6 +3,8 @@ from supabase import create_client, Client
 import time
 import pandas as pd
 from datetime import date
+import io
+from PIL import Image
 
 # --- 1. Configuração Inicial da Página ---
 st.set_page_config(page_title="O Olho da Leoa", page_icon="🦁", layout="wide")
@@ -220,7 +222,7 @@ def script_a_selva():
     st.markdown("---")
 
     st.info(
-        "💡 **Regra de Ouro:** Suba o print (prova) do engajamento. O sistema irá gerar um Código de Protocolo único e renomear sua foto para a auditoria da coordenação.")
+        "💡 **Otimização Ativa:** Todos os prints enviados são automaticamente comprimidos pelo sistema para poupar espaço, mantendo a máxima nitidez para auditoria.")
 
     # Formulário de Registro de Engajamento
     with st.form("form_reporte_digital", clear_on_submit=True):
@@ -240,25 +242,23 @@ def script_a_selva():
 
         comprovante = st.file_uploader("📸 Subir Print do Engajamento (OBRIGATÓRIO)", type=["png", "jpg", "jpeg"])
 
-        btn_registrar = st.form_submit_button("🚀 Subir Print e Distribuir Pontos")
+        btn_registrar = st.form_submit_button("🚀 Otimizar Imagem e Distribuir Pontos")
 
         if btn_registrar:
             if not comprovante:
                 st.error("🛑 O upload do print é OBRIGATÓRIO. Sem foto, sem pontos!")
             elif views == 0 and alcance == 0:
-                st.warning("⚠️ Você precisa ter pelo menos alguma view ou alcance para registrar.")
+                st.warning("⚠️ Precisas de introduzir pelo menos alguma view ou alcance para registar.")
             else:
                 try:
-                    # 1. GERAR CÓDIGO DE AUDITORIA E RENOMEAR ARQUIVO
-                    # Usamos o ID do usuário e os segundos exatos de agora para garantir que nunca vai repetir
+                    # 1. GERAR CÓDIGO DE AUDITORIA ÚNICO
                     timestamp = int(time.time())
                     codigo_auditoria = f"INF{st.session_state['usuario_id']}-{timestamp}"
 
-                    # Pegar a extensão original da imagem (.png, .jpg)
-                    extensao = comprovante.name.split('.')[-1]
-                    novo_nome_arquivo = f"{codigo_auditoria}.{extensao}"
+                    # Forçamos a extensão a ser sempre .jpg devido à compressão
+                    novo_nome_arquivo = f"{codigo_auditoria}.jpg"
 
-                    # 2. INSERÇÃO DOS DADOS NO BANCO
+                    # 2. INSERÇÃO DOS DADOS DE TEXTO NO BANCO
                     supabase.table("registro_influencia_digital").insert({
                         "colaborador_id": st.session_state["usuario_id"],
                         "data_referencia": str(data_acao),
@@ -269,22 +269,38 @@ def script_a_selva():
                         "alcance": alcance
                     }).execute()
 
-                    # 3. UPLOAD DA IMAGEM PARA O SUPABASE STORAGE (BUCKET)
-                    # Lê os bytes da imagem que o usuário subiu
-                    file_bytes = comprovante.read()
-                    # Faz o upload para a pasta "comprovantes" lá no Supabase
+                    # 3. 🚀 MOTOR DE COMPRESSÃO DO SÉNIOR (Magia em Memória)
+                    # Abre a imagem enviada pelo utilizador
+                    img_original = Image.open(comprovante)
+
+                    # Se for PNG (RGBA), converte para RGB para poder salvar como JPEG
+                    if img_original.mode in ("RGBA", "P"):
+                        img_original = img_original.convert("RGB")
+
+                    # Redimensiona a imagem mantendo a proporção (Largura máxima de 800px)
+                    img_original.thumbnail((800, 800))
+
+                    # Cria um buffer na memória para salvar os bytes comprimidos sem gravar nada no disco rígido
+                    buffer_memoria = io.BytesIO()
+
+                    # Guarda a imagem no buffer como JPEG, reduzindo a qualidade para 60% (super leve e legível)
+                    img_original.save(buffer_memoria, format="JPEG", quality=60)
+                    file_bytes = buffer_memoria.getvalue()
+
+                    # 4. UPLOAD DOS BYTES COMPRIMIDOS PARA O BUCKET DO SUPABASE
                     supabase.storage.from_("comprovantes").upload(
                         path=novo_nome_arquivo,
                         file=file_bytes,
-                        file_options={"content-type": comprovante.type}
+                        file_options={"content-type": "image/jpeg"}
                     )
 
                     st.success(
-                        f"🔥 Animal! Protocolo gerado: **{codigo_auditoria}**. O arquivo foi renomeado e salvo na nuvem!")
+                        f"🔥 Excelente! Protocolo **{codigo_auditoria}** gerado. Imagem otimizada com sucesso e salva na nuvem!")
                     time.sleep(3)
                     st.rerun()
+
                 except Exception as e:
-                    st.error(f"Erro ao salvar. Verifique se o Bucket 'comprovantes' existe no Supabase. Detalhe: {e}")
+                    st.error(f"Erro no processamento. Detalhe: {e}")
 
     # Histórico de aprovações
     st.markdown("---")
@@ -300,28 +316,8 @@ def script_a_selva():
             df_hist.columns = ["Data Ref.", "Protocolo (Arquivo)", "Views", "Alcance"]
             st.dataframe(df_hist, use_container_width=True)
         else:
-            st.info("Nenhuma postagem registrada ainda. Vá para as redes! 🦁")
+            st.info("Nenhuma postagem registada ainda. Vá para as redes! 🦁")
     except:
-        pass
-
-    # --- HISTÓRICO RECENTE DO INFLUENCIADOR ---
-    st.markdown("---")
-    st.subheader("📜 Seus Últimos Reportes de Hoje")
-    try:
-        resp_historico = supabase.table("registro_influenciadores") \
-            .select("created_at, local_referencia, adesivos_colados, panfletos_entregues") \
-            .eq("colaborador_id", st.session_state["usuario_id"]) \
-            .order("created_at", ascending=False) \
-            .limit(5).execute()
-
-        if resp_historico.data:
-            df_hist = pd.DataFrame(resp_historico.data)
-            # Organiza as colunas para exibição rápida
-            df_hist.columns = ["Horário", "Local", "Adesivos", "Panfletos"]
-            st.dataframe(df_hist, use_container_width=True)
-        else:
-            st.info("Você ainda não fez nenhum reporte hoje. Vá para cima deles! 🦁")
-    except Exception:
         pass
 
 # --- Script 3: O Olho da Leoa (Sala de Guerra) ---
