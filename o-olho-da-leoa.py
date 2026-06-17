@@ -215,64 +215,90 @@ def script_manada_de_leao():
 
 # --- Script 2: A Selva ---
 def script_a_selva():
-    st.header("🌿 A Selva - Radar de Influência")
-    st.write(f"Influenciador(a): **{st.session_state['nome_usuario']}**")
+    st.header("🌿 A Selva - Radar Digital (Influenciadores)")
+    st.write(f"Influenciador(a) Atirador(a): **{st.session_state['nome_usuario']}**")
     st.markdown("---")
 
-    # Layout em colunas para os principais números do dia dele
-    st.subheader("📊 Seu Painel de Impacto")
+    st.info(
+        "💡 **Regra de Ouro:** Monitore suas postagens. Quando achar que o post atingiu o pico de Alcance/Views, faça o registro. **Atenção:** Só é permitido um registro por link de publicação.")
 
-    # Vamos criar duas métricas visuais bonitas na tela
-    col_m1, col_m2 = st.columns(2)
-    with col_m1:
-        st.metric(label="🎯 Meta Diária de Adesivaço", value="150", delta="Falta pouco!")
-    with col_m2:
-        st.metric(label="⚡ Multiplicador de Pontos", value="1.5x", delta="Ativo no Turno")
+    # Formulário de Registro de Engajamento
+    with st.form("form_reporte_digital", clear_on_submit=True):
+        st.subheader("📱 Registrar Desempenho de Postagem")
 
-    st.markdown("---")
-    st.subheader("🚀 Reportar Ação de Panfletagem e Adesivaço")
-    st.write("Dica: Faça este reporte a cada esquina preenchida ou ao mudar de ponto de parada.")
+        col_d, col_t = st.columns(2)
+        with col_d:
+            data_acao = st.date_input("Data em que a ação/foto foi feita")
+        with col_t:
+            turno_acao = st.selectbox("Turno da Ação", ["Manhã", "Tarde", "Noite", "Integral"])
 
-    # Formulário rápido e otimizado para celular (onde o influenciador costuma usar)
-    with st.form("form_reporte_influencia", clear_on_submit=True):
-        col_inf1, col_inf2 = st.columns(2)
-        with col_inf1:
-            qtd_adesivos = st.number_input("Quantos ADESIVOS colou nesse ponto?", min_value=0, step=5,
-                                           help="Cada adesivo colado garante +1 ponto.")
-        with col_inf2:
-            qtd_panfletos = st.number_input("Quantos PANFLETOS entregou em mãos?", min_value=0, step=10)
+        link_post = st.text_input("Link da Publicação (Único e Obrigatório)",
+                                  placeholder="Ex: https://instagram.com/p/...")
 
-        local_referencia = st.text_input("Local de Referência / Ponto Comercial",
-                                         placeholder="Ex: Em frente à Padaria Central, Semáforo da Quadra 4")
-        observacao = st.text_area("Algum feedback da recepção do povo? (Opcional)",
-                                  placeholder="Ex: Povo muito receptivo, aceitaram bem o material.")
+        col_v, col_a = st.columns(2)
+        with col_v:
+            views = st.number_input("Visualizações (Views)", min_value=0, step=100)
+        with col_a:
+            alcance = st.number_input("Alcance (Reach)", min_value=0, step=100)
 
-        btn_enviar_impacto = st.form_submit_button("🔥 Registrar Impacto na Selva (+Pontos)")
+        comprovante = st.file_uploader("Subir Print do Engajamento (Prova)", type=["png", "jpg", "jpeg"])
 
-        if btn_enviar_impacto:
-            if qtd_adesivos == 0 and qtd_panfletos == 0:
-                st.error("🛑 Você precisa reportar pelo menos algum material entregue ou colado!")
-            elif not local_referencia.strip():
-                st.warning("⚠️ Informe o local onde você realizou essa ação para a coordenação acompanhar no mapa.")
+        btn_registrar = st.form_submit_button("🚀 Registrar Métrica e Distribuir Pontos")
+
+        if btn_registrar:
+            if not link_post.strip():
+                st.error("🛑 O Link da publicação é obrigatório para evitar duplicidade!")
+            elif views == 0 and alcance == 0:
+                st.warning("⚠️ Você precisa ter pelo menos alguma view ou alcance para registrar.")
             else:
                 try:
-                    # Registrando a produtividade do influenciador no Supabase
-                    supabase.table("registro_influenciadores").insert({
-                        "colaborador_id": st.session_state["usuario_id"],
-                        "data_registro": str(date.today()),
-                        "adesivos_colados": qtd_adesivos,
-                        "panfletos_entregues": qtd_panfletos,
-                        "local_referencia": local_referencia.strip(),
-                        "observacoes": observacao.strip()
-                    }).execute()
+                    # 1. VERIFICAÇÃO DE DUPLICIDADE: Impede que o mesmo link seja cadastrado duas vezes
+                    busca_link = supabase.table("registro_influencia_digital").select("id").eq("link_postagem",
+                                                                                               link_post.strip()).execute()
 
-                    st.success("💪 Excelente trabalho, Leão! Seu impacto foi registrado e seus pontos foram computados.")
-                    time.sleep(1.5)
-                    st.rerun()
+                    if len(busca_link.data) > 0:
+                        st.error(
+                            "❌ Negado! Este link já foi registrado anteriormente. Não é possível atualizar as views de um post já validado.")
+                    else:
+                        # 2. INSERÇÃO DOS DADOS NO BANCO
+                        # Pegamos apenas o nome do arquivo se ele subir um print
+                        nome_arquivo = comprovante.name if comprovante else "Sem print"
+
+                        supabase.table("registro_influencia_digital").insert({
+                            "colaborador_id": st.session_state["usuario_id"],
+                            "data_referencia": str(data_acao),
+                            "turno_referencia": turno_acao,
+                            "link_postagem": link_post.strip(),
+                            "views": views,
+                            "alcance": alcance,
+                            "print_arquivo": nome_arquivo
+                        }).execute()
+
+                        st.success(
+                            f"🔥 Animal! Postagem validada. Os pontos gerados foram distribuídos para toda a equipe que operou no turno da {turno_acao} do dia {data_acao.strftime('%d/%m/%Y')}!")
+                        time.sleep(2)
+                        st.rerun()
                 except Exception as e:
-                    # Se a tabela ainda não existir no seu banco, o sistema vai avisar aqui sem travar a tela branca
                     st.error(
-                        f"Erro ao salvar no banco. Verifique se a tabela 'registro_influenciadores' existe. Detalhe: {e}")
+                        f"Erro no banco de dados (Verifique se a tabela 'registro_influencia_digital' existe). Detalhe: {e}")
+
+    # Histórico de aprovações
+    st.markdown("---")
+    st.subheader("📜 Seu Histórico de Disparos")
+    try:
+        resp_historico = supabase.table("registro_influencia_digital").select(
+            "data_referencia, link_postagem, views, alcance").eq("colaborador_id",
+                                                                 st.session_state["usuario_id"]).order("id",
+                                                                                                       ascending=False).limit(
+            5).execute()
+        if resp_historico.data:
+            df_hist = pd.DataFrame(resp_historico.data)
+            df_hist.columns = ["Data Ref.", "Link do Post", "Views", "Alcance"]
+            st.dataframe(df_hist, use_container_width=True)
+        else:
+            st.info("Nenhuma postagem registrada ainda. Vá para as redes! 🦁")
+    except:
+        pass
 
     # --- HISTÓRICO RECENTE DO INFLUENCIADOR ---
     st.markdown("---")
@@ -305,7 +331,49 @@ def script_o_olho_da_leoa():
     ])
 
     with aba1: st.info("Gráficos Visuais")
-    with aba2: st.info("Ranking de Pontos")
+    
+    with aba2:
+        st.header("👑 Gamificação e Metas da Operação")
+
+        tab_ranking, tab_metas = st.tabs(["🏆 Ranking de Equipes", "⚙️ Configurar Metas e Multiplicadores"])
+
+        with tab_ranking:
+            st.info("O Ranking Geral será gerado aqui cruzando os dados da Rua (Manada) com os do Digital (Selva).")
+
+        with tab_metas:
+            st.subheader("Regras do Jogo (Aplica-se a todos)")
+            st.write(
+                "Defina aqui as metas. Quando o time atinge a meta combinada de panfletos, adesivos e engajamento digital, todos os pontos gerados por eles recebem esse multiplicador mágico.")
+
+            with st.form("form_config_metas"):
+                col_m1, col_m2 = st.columns(2)
+                with col_m1:
+                    nova_meta_alcance = st.number_input("Meta de Alcance Digital (Por Turno)", min_value=1000,
+                                                        step=1000, value=10000)
+                    nova_meta_adesivos = st.number_input("Meta de Adesivos Colados (Por Turno)", min_value=10, step=10,
+                                                         value=100)
+                with col_m2:
+                    novo_multiplicador = st.number_input("Multiplicador de Equipe (Ex: 1.5x, 2.0x)", min_value=1.0,
+                                                         step=0.1, value=1.5)
+
+                btn_salvar_regras = st.form_submit_button("💾 Aplicar Regras para a Tropa")
+
+                if btn_salvar_regras:
+                    try:
+                        # Aqui você salva na sua tabela de configurações do Supabase.
+                        # Como é um painel global, usamos uma tabela simples de configuração.
+                        supabase.table("configuracoes_globais").upsert({
+                            "id": 1,  # ID fixo para ter sempre apenas 1 linha de configuração ativa
+                            "meta_alcance": nova_meta_alcance,
+                            "meta_adesivos": nova_meta_adesivos,
+                            "multiplicador_equipe": novo_multiplicador
+                        }).execute()
+
+                        st.success(
+                            f"✅ Regras atualizadas! O Multiplicador agora é de {novo_multiplicador}x para quem bater as metas.")
+                    except Exception as e:
+                        st.error(f"Erro ao salvar configurações. Crie a tabela 'configuracoes_globais'. Detalhes: {e}")
+
     with aba3: st.info("Auditoria")
 
     with aba4:
