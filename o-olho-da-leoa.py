@@ -2,6 +2,7 @@ import streamlit as st
 from supabase import create_client, Client
 import time
 import pandas as pd
+from datetime import date
 
 # --- 1. Configuração Inicial da Página ---
 st.set_page_config(page_title="O Olho da Leoa", page_icon="🦁", layout="wide")
@@ -16,14 +17,10 @@ def init_connection():
 supabase = init_connection()
 
 # --- 3. Inicialização do Estado da Sessão ---
-if "logado" not in st.session_state:
-    st.session_state["logado"] = False
-if "perfil" not in st.session_state:
-    st.session_state["perfil"] = None
-if "nome_usuario" not in st.session_state:
-    st.session_state["nome_usuario"] = None
-if "usuario_id" not in st.session_state:
-    st.session_state["usuario_id"] = None
+if "logado" not in st.session_state: st.session_state["logado"] = False
+if "perfil" not in st.session_state: st.session_state["perfil"] = None
+if "nome_usuario" not in st.session_state: st.session_state["nome_usuario"] = None
+if "usuario_id" not in st.session_state: st.session_state["usuario_id"] = None
 
 # --- 4. Módulo de Login ---
 def tela_login():
@@ -38,9 +35,7 @@ def tela_login():
             botao_entrar = st.form_submit_button("Entrar")
 
             if botao_entrar and usuario:
-                usuario_limpo = usuario.strip()
-                busca = supabase.table("rh_colaboradores").select("*").ilike("nome", usuario_limpo).execute()
-
+                busca = supabase.table("rh_colaboradores").select("*").ilike("nome", usuario.strip()).execute()
                 if len(busca.data) > 0:
                     usuario_db = busca.data[0]
                     if usuario_db["ativo"]:
@@ -49,17 +44,12 @@ def tela_login():
                         st.session_state["usuario_id"] = usuario_db["id"]
                         tag = usuario_db["tag"]
 
-                        if tag in ["Motorista", "Apoio"]:
-                            st.session_state["perfil"] = "Lider_Rua"
-                        elif tag == "Influenciador":
-                            st.session_state["perfil"] = "Influenciador"
-                        elif tag == "Coordenacao":
-                            st.session_state["perfil"] = "Coordenacao"
+                        if tag in ["Motorista", "Apoio"]: st.session_state["perfil"] = "Lider_Rua"
+                        elif tag == "Influenciador": st.session_state["perfil"] = "Influenciador"
+                        elif tag == "Coordenacao": st.session_state["perfil"] = "Coordenacao"
                         st.rerun()
-                    else:
-                        st.error("❌ Usuário inativo no sistema.")
-                else:
-                    st.error(f"❌ Não achei '{usuario_limpo}'.")
+                    else: st.error("❌ Usuário inativo no sistema.")
+                else: st.error("❌ Usuário não encontrado.")
 
 # --- 5. Script 1: Manada de Leão ---
 def script_manada_de_leao():
@@ -67,53 +57,65 @@ def script_manada_de_leao():
     st.write(f"Líder Escalonado: **{st.session_state['nome_usuario']}**")
     st.markdown("---")
 
-    if "turno_ativo" not in st.session_state:
-        st.session_state["turno_ativo"] = False
-    if "turno_id_atual" not in st.session_state:
-        st.session_state["turno_id_atual"] = None
+    if "turno_ativo" not in st.session_state: st.session_state["turno_ativo"] = False
+    if "turno_id_atual" not in st.session_state: st.session_state["turno_id_atual"] = None
+    if "viatura_atual" not in st.session_state: st.session_state["viatura_atual"] = None
 
     if not st.session_state["turno_ativo"]:
-        st.subheader("📋 Abertura de Turno e Check-in")
+        st.subheader("📋 Abertura de Turno e Bate-Ponto")
         try:
             resp_colab = supabase.table("rh_colaboradores").select("id, nome, tag").eq("ativo", True).execute()
             lista_colaboradores = [c for c in resp_colab.data if c["id"] != st.session_state["usuario_id"]]
-
             motoristas = {c['nome']: c['id'] for c in lista_colaboradores if c['tag'] == 'Motorista'}
             influenciadores = {c['nome']: c['id'] for c in lista_colaboradores if c['tag'] == 'Influenciador'}
             apoios = {c['nome']: c['id'] for c in lista_colaboradores if c['tag'] == 'Apoio'}
-        except Exception as e:
-            st.error(f"Erro de conexão com o RH: {e}")
+        except Exception:
             motoristas, influenciadores, apoios = {}, {}, {}
 
         with st.form("form_abertura_turno"):
-            placa = st.text_input("Placa do Veículo (ex: ABC-1234)")
-            st.markdown("👥 **Montagem da Equipe (Filtrada por Função)**")
+            col_v, col_t = st.columns(2)
+            with col_v:
+                # O LÍDER DIZ QUAL GAVETA DE ROTA ELE VAI OLHAR
+                viatura_selecionada = st.selectbox("Qual Viatura você está assumindo?", [f"Viatura {str(i).zfill(2)}" for i in range(1, 11)])
+                placa = st.text_input("Placa do Veículo (Opcional)", placeholder="ABC-1234")
+            with col_t:
+                turno_trabalho = st.selectbox("Turno deste expediente", ["Manhã", "Tarde", "Noite", "Integral"])
+
+            st.markdown("👥 **Montagem da Equipe (O Ponto será batido para todos)**")
             col_mot, col_inf, col_apo = st.columns(3)
             with col_mot: sel_mot = st.multiselect("Motorista(s)", options=list(motoristas.keys()))
             with col_inf: sel_inf = st.multiselect("Influenciador(es)", options=list(influenciadores.keys()))
             with col_apo: sel_apo = st.multiselect("Apoio(s)", options=list(apoios.keys()))
 
-            st.markdown("---")
             st.markdown("📦 **Trava Logística: Material Embarcado**")
             col1, col2, col3 = st.columns(3)
-            with col1: panfletos = st.number_input("Panfletos (Unidades)", min_value=0, step=50)
-            with col2: adesivos = st.number_input("Adesivos (Unidades)", min_value=0, step=10)
-            with col3: bandeiras = st.number_input("Bandeiras (Unidades)", min_value=0, step=1)
+            with col1: panfletos = st.number_input("Panfletos", min_value=0, step=50)
+            with col2: adesivos = st.number_input("Adesivos", min_value=0, step=10)
+            with col3: bandeiras = st.number_input("Bandeiras", min_value=0, step=1)
 
-            btn_iniciar = st.form_submit_button("🚀 Iniciar Missão")
+            btn_iniciar = st.form_submit_button("🚀 Iniciar Missão e Bater Ponto")
 
             if btn_iniciar:
                 equipe_total = sel_mot + sel_inf + sel_apo
-                if not placa: st.error("❌ A Placa do veículo é obrigatória!")
-                elif len(equipe_total) == 0: st.error("❌ O carro não pode sair vazio. Selecione a equipe!")
-                elif panfletos == 0 and adesivos == 0 and bandeiras == 0: st.error("🛑 Trava Logística: Registre ao menos um tipo de material embarcado!")
+                if len(equipe_total) == 0: st.error("❌ O carro não pode sair vazio!")
+                elif panfletos == 0 and adesivos == 0 and bandeiras == 0: st.error("🛑 Registre o material embarcado!")
                 else:
                     try:
                         equipe_ids = [motoristas[n] for n in sel_mot] + [influenciadores[n] for n in sel_inf] + [apoios[n] for n in sel_apo]
-                        dados_turno = {"lider_id": st.session_state["usuario_id"], "placa_veiculo": placa.upper(), "equipe_ids": equipe_ids}
-                        res_turno = supabase.table("controle_turnos").insert(dados_turno).execute()
+
+                        # 1. Cria o Turno do Carro
+                        res_turno = supabase.table("controle_turnos").insert({
+                            "lider_id": st.session_state["usuario_id"], "placa_veiculo": placa, "equipe_ids": equipe_ids
+                        }).execute()
                         novo_turno_id = res_turno.data[0]["id"]
 
+                        # 2. BATE O PONTO AUTOMÁTICO NA TABELA NOVA
+                        lista_ponto = [{"colaborador_id": st.session_state["usuario_id"], "data_trabalho": str(date.today()), "turno_trabalho": turno_trabalho, "setor": "Rua"}]
+                        for colab_id in equipe_ids:
+                            lista_ponto.append({"colaborador_id": colab_id, "data_trabalho": str(date.today()), "turno_trabalho": turno_trabalho, "setor": "Rua"})
+                        supabase.table("controle_ponto").insert(lista_ponto).execute()
+
+                        # 3. Salva Materiais
                         materiais = [
                             {"turno_id": novo_turno_id, "material_nome": "Panfletos", "qtd_embarcada": panfletos, "qtd_sobra": 0},
                             {"turno_id": novo_turno_id, "material_nome": "Adesivos", "qtd_embarcada": adesivos, "qtd_sobra": 0},
@@ -123,51 +125,49 @@ def script_manada_de_leao():
                         if materiais: supabase.table("estoque_materiais").insert(materiais).execute()
 
                         st.session_state["turno_id_atual"] = novo_turno_id
+                        st.session_state["viatura_atual"] = viatura_selecionada
                         st.session_state["turno_ativo"] = True
                         st.rerun()
-                    except Exception as e:
-                        st.error(f"🚨 Erro no banco de dados: {str(e)}")
+                    except Exception as e: st.error(f"🚨 Erro: {str(e)}")
 
     else:
-        st.success(f"🟢 Turno #{st.session_state['turno_id_atual']} Em Andamento. Viatura na rua!")
+        st.success(f"🟢 {st.session_state['viatura_atual']} na rua! Turno #{st.session_state['turno_id_atual']}")
 
         try:
-            resp_rotas = supabase.table("planejamento_rotas").select("*").eq("status", "Pendente").order("id").limit(1).execute()
+            # O SEGREDO ESTÁ AQUI: Só puxa a rota que foi destinada para a viatura dele!
+            resp_rotas = supabase.table("planejamento_rotas").select("*").eq("status", "Pendente").eq("viatura_alocada", st.session_state["viatura_atual"]).order("id").limit(1).execute()
             rota_atual = resp_rotas.data[0] if len(resp_rotas.data) > 0 else None
             rota_id_db = rota_atual["id"] if rota_atual else None
         except Exception:
-            rota_atual = None
-            rota_id_db = None
+            rota_atual, rota_id_db = None, None
 
         st.markdown("---")
         if rota_atual:
-            st.title(f"📍 Rota Ativa: {rota_atual['nome_rota']}")
-            st.subheader(f"🎯 Bairro/Região: {rota_atual['bairro_alvo']} ({rota_atual.get('regiao', 'Não informada')})")
+            st.title(f"📍 Rota Alocada: {rota_atual['nome_rota']}")
+            st.subheader(f"🎯 Alvo: {rota_atual['bairro_alvo']} ({rota_atual.get('regiao', '')})")
+            if rota_atual.get("descricao"): st.info(f"Missão: {rota_atual['descricao']}")
         else:
             st.title("📍 Rota Livre (Atuação por Oportunidade)")
-            st.info("A fila de missões despachadas pela coordenação está vazia.")
+            st.info(f"Não há missões pendentes na gaveta da {st.session_state['viatura_atual']}.")
         st.markdown("---")
 
         st.subheader("📱 1. Captação de Eleitores")
         with st.form("form_captura", clear_on_submit=True):
-            col_nome, col_zap = st.columns(2)
-            with col_nome: nome_eleitor = st.text_input("Nome do Eleitor")
-            with col_zap: zap_eleitor = st.text_input("WhatsApp (com DDD)")
+            col_n, col_z = st.columns(2)
+            with col_n: nome_eleitor = st.text_input("Nome do Eleitor")
+            with col_z: zap_eleitor = st.text_input("WhatsApp (com DDD)")
             bairro_eleitor = st.text_input("Bairro")
 
             if st.form_submit_button("Salvar Contato (+3 Pontos)"):
                 if nome_eleitor and zap_eleitor:
                     try:
                         supabase.table("captura_eleitores").insert({
-                            "turno_id": st.session_state["turno_id_atual"],
-                            "rota_id": rota_id_db,
-                            "nome_eleitor": nome_eleitor.strip(),
-                            "whatsapp": zap_eleitor.strip(),
-                            "bairro": bairro_eleitor.strip()
+                            "turno_id": st.session_state["turno_id_atual"], "rota_id": rota_id_db,
+                            "nome_eleitor": nome_eleitor.strip(), "whatsapp": zap_eleitor.strip(), "bairro": bairro_eleitor.strip()
                         }).execute()
-                        st.toast("✅ Lead capturado e salvo na base!")
-                    except Exception as e: st.error("Erro ao salvar contato.")
-                else: st.warning("⚠️ Preencha Nome e WhatsApp para pontuar.")
+                        st.toast("✅ Lead capturado!")
+                    except Exception: st.error("Erro ao salvar.")
+                else: st.warning("⚠️ Preencha Nome e WhatsApp.")
 
         st.markdown("---")
         st.subheader("📊 2. Senso da Rua (Pesquisa Rápida)")
@@ -176,93 +176,52 @@ def script_manada_de_leao():
             nomes_candidatos = [c["nome"] for c in resp_cand.data]
         except Exception: nomes_candidatos = []
 
-        opcoes_voto = ["Selecione..."] + nomes_candidatos + ["Outros Oponentes", "Branco / Nulo", "Indeciso / Não sabe"]
-
         with st.form("form_pesquisa", clear_on_submit=True):
-            nome_eleitor_pesq = st.text_input("Nome do Eleitor (Obrigatório para validar a pesquisa)")
-            candidato_escolhido = st.selectbox("Intenção de Voto (Espontânea/Estimulada):", opcoes_voto)
+            nome_eleitor_pesq = st.text_input("Nome do Eleitor (Obrigatório)")
+            candidato_escolhido = st.selectbox("Intenção de Voto:", ["Selecione..."] + nomes_candidatos + ["Outros Oponentes", "Branco / Nulo", "Indeciso / Não sabe"])
 
             if st.form_submit_button("Registrar Voto (+1 Ponto)"):
-                if not nome_eleitor_pesq.strip(): st.error("🛑 É obrigatório informar o nome do eleitor!")
-                elif candidato_escolhido == "Selecione...": st.warning("⚠️ Selecione uma intenção de voto válida.")
+                if not nome_eleitor_pesq.strip(): st.error("🛑 Nome obrigatório!")
+                elif candidato_escolhido == "Selecione...": st.warning("⚠️ Selecione a intenção.")
                 else:
                     try:
                         supabase.table("pesquisas_rua").insert({
-                            "turno_id": st.session_state["turno_id_atual"],
-                            "rota_id": rota_id_db,
-                            "nome_eleitor": nome_eleitor_pesq.strip(),
-                            "intencao_voto": candidato_escolhido
+                            "turno_id": st.session_state["turno_id_atual"], "rota_id": rota_id_db,
+                            "nome_eleitor": nome_eleitor_pesq.strip(), "intencao_voto": candidato_escolhido
                         }).execute()
-                        st.toast("✅ Voto validado!")
-                    except Exception as e: st.error(f"Erro ao salvar pesquisa: {e}")
+                        st.toast("✅ Voto computado!")
+                    except Exception: st.error("Erro ao salvar pesquisa.")
 
         st.markdown("---")
         st.subheader("🏁 3. Check-out da Rota Atual")
         with st.form("form_checkout"):
-            clima = st.radio("Nível de aceitação da rua nesta rota:", ["🤩 Ótimo", "🙂 Bom", "😐 Regular", "🛑 Baixo"], horizontal=True)
-            justificativa = ""
-            if clima == "🛑 Baixo": justificativa = st.text_input("⚠️ Motivo da baixa aceitação (Obrigatório)")
+            clima = st.radio("Clima da rua:", ["🤩 Ótimo", "🙂 Bom", "😐 Regular", "🛑 Baixo"], horizontal=True)
+            justificativa = st.text_input("⚠️ Motivo da baixa aceitação") if clima == "🛑 Baixo" else ""
 
             if st.form_submit_button("✅ Finalizar Rota e Puxar Próxima"):
-                if clima == "🛑 Baixo" and not justificativa.strip(): st.error("🛑 Justifique o motivo.")
+                if clima == "🛑 Baixo" and not justificativa: st.error("🛑 Justifique o motivo.")
                 else:
                     try:
                         supabase.table("rotas_e_clima").insert({
-                            "turno_id": st.session_state["turno_id_atual"],
-                            "rota_id": rota_id_db,
-                            "clima_rua": clima,
-                            "justificativa_abandono": justificativa
+                            "turno_id": st.session_state["turno_id_atual"], "rota_id": rota_id_db,
+                            "clima_rua": clima, "justificativa_abandono": justificativa
                         }).execute()
                         if rota_atual: supabase.table("planejamento_rotas").update({"status": "Concluída"}).eq("id", rota_atual["id"]).execute()
-                        st.success("Rota finalizada! O letreiro vai atualizar.")
+                        st.success("Rota finalizada!")
                         st.rerun()
-                    except Exception as e: st.error(f"Erro ao encerrar a rota: {e}")
+                    except Exception as e: st.error(f"Erro: {e}")
 
         st.markdown("---")
-        st.subheader("🛑 Fim de Expediente")
-        if st.button("Encerrar Turno Definitivamente", use_container_width=True, type="primary"):
+        if st.button("🛑 Fim de Expediente (Encerrar Turno)", use_container_width=True, type="primary"):
             st.session_state["turno_ativo"] = False
             st.session_state["turno_id_atual"] = None
+            st.session_state["viatura_atual"] = None
             st.rerun()
 
 # --- Script 2: A Selva ---
 def script_a_selva():
     st.header("🌿 A Selva - Radar de Influência")
-    st.write(f"Influenciador: **{st.session_state['nome_usuario']}**")
-    st.markdown("---")
-    st.subheader("📢 Prestação de Contas de Mídia")
-
-    with st.form("form_selva", clear_on_submit=True):
-        col1, col2 = st.columns(2)
-        with col1:
-            data_postagem = st.date_input("Data da Postagem")
-            formato = st.selectbox("Formato", ["Feed", "Story", "Reels"])
-        with col2:
-            turno_postagem = st.selectbox("Turno da Postagem", ["Manhã", "Tarde", "Noite"])
-            logo_visivel = st.checkbox("A Logo da Campanha estava visível?")
-
-        st.markdown("---")
-        col_v, col_a = st.columns(2)
-        with col_v: views = st.number_input("Visualizações Totais", min_value=0, step=10)
-        with col_a: alcance = st.number_input("Contas Alcançadas", min_value=0, step=10)
-
-        if st.form_submit_button("Gerar Código e Enviar Auditoria"):
-            pontos_base = 10 if formato in ["Feed", "Reels"] else 2
-            pontos_totais = pontos_base + ((views // 100) * 5) + ((alcance // 1000) * 10)
-            codigo_unico = f"SLV-{int(time.time() * 1000)}"
-
-            try:
-                supabase.table("auditoria_selva").insert({
-                    "influenciador_id": st.session_state["usuario_id"],
-                    "data_postagem": str(data_postagem), "turno_postagem": turno_postagem,
-                    "formato": formato, "logo_visivel": logo_visivel, "views": views,
-                    "alcance": alcance, "codigo_criptografico": codigo_unico, "pontos_gerados": pontos_totais
-                }).execute()
-                st.success("✅ Auditoria enviada!")
-                st.subheader(f"🔑 Seu Código: {codigo_unico}")
-                st.info(f"🏆 Pontuação calculada: **{pontos_totais} pontos**")
-                st.warning("⚠️ Renomeie o seu print de comprovação com o código acima e salve na nuvem!")
-            except Exception as e: st.error(f"Erro ao salvar na base: {e}")
+    st.write("Módulo em construção...")
 
 # --- Script 3: O Olho da Leoa (Sala de Guerra) ---
 def script_o_olho_da_leoa():
@@ -270,108 +229,109 @@ def script_o_olho_da_leoa():
     st.write("A central de inteligência e controle de toda a operação.")
     st.markdown("---")
 
-    aba1, aba2, aba3, aba4 = st.tabs([
-        "👁️ Visão da Leoa",
-        "👑 Reis da Selva",
-        "🔎 O Covil",
-        "🐾 Controle da Manada"
+    aba1, aba2, aba3, aba4, aba5 = st.tabs([
+        "👁️ Visão", "👑 Gamificação", "🔎 O Covil", "🐾 Despacho", "💰 O Tesouro (RH e Pagamentos)"
     ])
 
-    with aba1:
-        st.header("👁️ Visão da Leoa")
-        st.info("Aqui entrarão os gráficos de Índice de Aceitação, Leads por Local, Pesquisas por Região e Controle de Materiais.")
-
-    with aba2:
-        st.header("👑 Reis da Selva")
-        st.info("Aqui entrarão os Placares Gerais e o Top 1 por Função (Líder, Motorista, Influencer, Apoio).")
-
-    with aba3:
-        st.header("🔎 O Covil (Auditoria)")
-        st.info("Aqui o C3 vai validar as fotos da nuvem contra o código gerado na Selva e aprovar/estornar pontos.")
+    with aba1: st.info("Gráficos Visuais")
+    with aba2: st.info("Ranking de Pontos")
+    with aba3: st.info("Auditoria")
 
     with aba4:
-        st.header("🐾 Controle da Manada")
-        st.write("Gerencie os territórios de atuação e o radar da operação.")
-
-        tab_rotas, tab_candidatos = st.tabs(["📍 Territórios de Caça (Rotas)", "🦁 Realeza (Candidatos)"])
+        st.header("🐾 Controle da Manada (Despacho)")
+        tab_rotas, tab_candidatos = st.tabs(["📍 Territórios de Caça", "🦁 Realeza"])
 
         with tab_rotas:
-            st.subheader("Mapear Novo Território (Despachar Rota)")
+            st.subheader("Mapear Novo Território (Alocar Rota para Viatura)")
             with st.form("form_rotas", clear_on_submit=True):
                 col1, col2 = st.columns(2)
                 with col1:
-                    nome_rota = st.text_input("Nome da Operação (Ex: Invasão UnB)")
-                    regiao = st.selectbox("Macrorregião",
-                                          ["Plano Piloto", "Asa Norte", "Asa Sul", "Taguatinga", "Ceilândia", "Gama",
-                                           "Águas Claras", "Outras"])
+                    nome_rota = st.text_input("Nome da Operação")
+                    regiao = st.selectbox("Macrorregião", ["Plano Piloto", "Asa Norte", "Asa Sul", "Taguatinga", "Ceilândia", "Gama", "Águas Claras", "Outras"])
                 with col2:
-                    bairro_alvo = st.text_input("Bairro / Ponto Específico")
-                    status_inicial = st.selectbox("Status", ["Pendente"])
+                    bairro_alvo = st.text_input("Bairro / Ponto")
+                    # NOVO: O DESPACHANTE ESCOLHE QUAL CARRO VAI FAZER A ROTA
+                    viatura_alocada = st.selectbox("Qual carro fará esta rota?", [f"Viatura {str(i).zfill(2)}" for i in range(1, 11)])
 
-                descricao = st.text_area("Instruções da Missão (Visível para o Líder no carro)")
-
-                if st.form_submit_button("Despachar para a Manada"):
-                    if not nome_rota or not bairro_alvo:
-                        st.error("Preencha o Nome da Rota e o Bairro Alvo!")
-                    else:
-                        try:
-                            supabase.table("planejamento_rotas").insert({
-                                "nome_rota": nome_rota,
-                                "regiao": regiao,
-                                "bairro_alvo": bairro_alvo,
-                                "descricao": descricao,
-                                "status": "Pendente"
-                            }).execute()
-                            st.success("✅ Território mapeado! A rota já está na fila dos carros na rua.")
-                        except Exception as e:
-                            st.error(f"Erro ao salvar rota no banco: {e}")
+                descricao = st.text_area("Instruções da Missão")
+                if st.form_submit_button("Despachar Rota"):
+                    try:
+                        supabase.table("planejamento_rotas").insert({
+                            "nome_rota": nome_rota, "regiao": regiao, "bairro_alvo": bairro_alvo,
+                            "descricao": descricao, "viatura_alocada": viatura_alocada, "status": "Pendente"
+                        }).execute()
+                        st.success(f"✅ Rota colocada na gaveta da {viatura_alocada}!")
+                    except Exception as e: st.error(f"Erro: {e}")
 
             st.markdown("---")
-            st.subheader("🗺️ Territórios Atuais (Fila de Espera)")
             try:
                 resp_rotas = supabase.table("planejamento_rotas").select("*").eq("status", "Pendente").execute()
                 if resp_rotas.data:
                     df_rotas = pd.DataFrame(resp_rotas.data)
-                    st.dataframe(df_rotas[["nome_rota", "regiao", "bairro_alvo", "descricao"]],
-                                 use_container_width=True)
-                else:
-                    st.success("🎉 Todas as rotas já foram concluídas pela Manada!")
-            except:
-                st.warning("Não foi possível carregar a fila de rotas.")
+                    st.dataframe(df_rotas[["viatura_alocada", "nome_rota", "regiao", "bairro_alvo"]], use_container_width=True)
+            except: pass
 
-        with tab_candidatos:
-            st.subheader("Adicionar Nome ao Radar de Pesquisas")
-            with st.form("form_candidatos", clear_on_submit=True):
-                nome_cand = st.text_input("Nome do Candidato ou Partido")
-                if st.form_submit_button("Registrar no Sistema"):
-                    if nome_cand:
-                        try:
-                            supabase.table("candidatos").insert({"nome": nome_cand.strip(), "ativo": True}).execute()
-                            st.success(f"✅ {nome_cand} adicionado ao radar dos líderes de rua!")
-                        except Exception as e:
-                            st.error(f"Erro ao adicionar candidato: {e}")
-                    else:
-                        st.warning("⚠️ Digite um nome válido.")
+        with tab_candidatos: st.info("Cadastro de candidatos")
 
-            st.markdown("---")
-            st.subheader("🦁 Radar Atual (Candidatos Ativos na Rua)")
+    # --- A NOVA ABA DE RELATÓRIOS E RH ---
+    with aba5:
+        st.header("💰 O Tesouro da Leoa (Controle de Ponto e Pagamentos)")
+        tab_qg, tab_relatorio = st.tabs(["🏢 Bater Ponto Manual (Equipe QG)", "📊 Relatório de Fechamento (Folha)"])
+
+        with tab_qg:
+            st.subheader("Registrar Presença - Base Interna")
             try:
-                resp_cand = supabase.table("candidatos").select("*").eq("ativo", True).execute()
-                if resp_cand.data:
-                    for c in resp_cand.data:
-                        st.write(f"▪️ **{c['nome']}**")
-                else:
-                    st.info("Nenhum candidato cadastrado no momento.")
-            except:
-                pass
+                resp_colab = supabase.table("rh_colaboradores").select("id, nome").eq("ativo", True).execute()
+                opcoes_rh = {c['nome']: c['id'] for c in resp_colab.data}
+            except: opcoes_rh = {}
 
-# --- 6. Roteamento Principal (O Guarda de Trânsito) ---
-if not st.session_state["logado"]:
-    tela_login()
+            with st.form("form_ponto_qg"):
+                col_c, col_d, col_t = st.columns(3)
+                with col_c: pessoa = st.selectbox("Colaborador", options=list(opcoes_rh.keys()))
+                with col_d: data_ponto = st.date_input("Data do Expediente")
+                with col_t: turno_ponto = st.selectbox("Turno Trabalhado", ["Manhã", "Tarde", "Noite", "Integral"])
+
+                if st.form_submit_button("Registrar Ponto QG"):
+                    try:
+                        supabase.table("controle_ponto").insert({
+                            "colaborador_id": opcoes_rh[pessoa],
+                            "data_trabalho": str(data_ponto),
+                            "turno_trabalho": turno_ponto,
+                            "setor": "QG"
+                        }).execute()
+                        st.success(f"✅ Ponto de {pessoa} registrado com sucesso!")
+                    except Exception as e: st.error(f"Erro: {e}")
+
+        with tab_relatorio:
+            st.subheader("Relatório Sintético de Turnos (Rua + QG)")
+            st.write("Este painel resume quantos dias e quantos turnos cada pessoa trabalhou, independentemente da equipe que ela estava.")
+            if st.button("🔄 Gerar Relatório de Fechamento"):
+                try:
+                    # Cruza os dados do Ponto com os Nomes do RH via Pandas para gerar um extrato perfeito
+                    resp_ponto = supabase.table("controle_ponto").select("*").execute()
+                    resp_rh = supabase.table("rh_colaboradores").select("id, nome, tag").execute()
+
+                    if resp_ponto.data and resp_rh.data:
+                        df_ponto = pd.DataFrame(resp_ponto.data)
+                        df_rh = pd.DataFrame(resp_rh.data)
+
+                        df_merged = df_ponto.merge(df_rh, left_on='colaborador_id', right_on='id')
+
+                        # A mágica do Pandas: agrupa pelo nome e conta turnos e dias únicos
+                        resumo = df_merged.groupby(['nome', 'tag']).agg(
+                            Dias_Trabalhados=('data_trabalho', 'nunique'),
+                            Total_de_Turnos=('turno_trabalho', 'count')
+                        ).reset_index()
+
+                        st.dataframe(resumo.sort_values(by="Total_de_Turnos", ascending=False), use_container_width=True)
+                    else:
+                        st.warning("Ainda não há registros de ponto no sistema.")
+                except Exception as e:
+                    st.error(f"Erro ao compilar o relatório: {e}")
+
+# --- 6. Roteamento Principal ---
+if not st.session_state["logado"]: tela_login()
 else:
-    if st.session_state["perfil"] == "Lider_Rua":
-        script_manada_de_leao()
-    elif st.session_state["perfil"] == "Influenciador":
-        script_a_selva()
-    elif st.session_state["perfil"] == "Coordenacao":
-        script_o_olho_da_leoa()
+    if st.session_state["perfil"] == "Lider_Rua": script_manada_de_leao()
+    elif st.session_state["perfil"] == "Influenciador": script_a_selva()
+    elif st.session_state["perfil"] == "Coordenacao": script_o_olho_da_leoa()
