@@ -293,126 +293,111 @@ def script_o_olho_da_leoa():
             except:
                 pass
 
-                # --- NOVO MÓDULO: ALCATEIA (RH) ---
-                with tab_rh:
-                    st.subheader("🐺 Gerenciamento da Alcateia (RH)")
+        # === OLHA O ALINHAMENTO AQUI, MEU DEV! (Mesma reta do with tab_candidatos) ===
+        with tab_rh:
+            st.subheader("🐺 Gerenciamento da Alcateia (RH)")
 
-                    # 1. Puxar todos os colaboradores ativos para preencher as opções de Edição e Remoção
-                    try:
-                        resp_colab_list = supabase.table("rh_colaboradores").select(
-                            "id, nome, tag, telefone, ativo").eq("ativo", True).order("nome").execute()
-                        colaboradores = resp_colab_list.data
-                        # Criar um dicionário para facilitar a busca do ID na hora de editar/inativar
-                        opcoes_rh = {c['nome']: c for c in colaboradores}
-                    except Exception:
-                        colaboradores = []
-                        opcoes_rh = {}
+            # 1. Puxar todos os colaboradores ativos para preencher as opções de Edição e Remoção
+            try:
+                resp_colab_list = supabase.table("rh_colaboradores").select("id, nome, tag, telefone, ativo").eq("ativo", True).order("nome").execute()
+                colaboradores = resp_colab_list.data
+                opcoes_rh = {c['nome']: c for c in colaboradores}
+            except Exception:
+                colaboradores = []
+                opcoes_rh = {}
 
-                    # Sub-abas para organizar as ações do RH
-                    aba_cadastrar, aba_editar, aba_inativar = st.tabs(
-                        ["➕ Recrutar", "✏️ Editar Perfil", "❌ Inativar Membro"])
+            # Sub-abas para organizar as ações do RH
+            aba_cadastrar, aba_editar, aba_inativar = st.tabs(["➕ Recrutar", "✏️ Editar Perfil", "❌ Inativar Membro"])
 
-                    # --- AÇÃO: CADASTRAR ---
-                    with aba_cadastrar:
-                        with st.form("form_rh_cadastrar", clear_on_submit=True):
-                            col_n, col_t = st.columns(2)
-                            with col_n:
-                                nome_colab = st.text_input("Nome Completo / Apelido")
-                                telefone_colab = st.text_input("Telefone (WhatsApp)")
-                            with col_t:
-                                tag_colab = st.selectbox("Patente (Função)",
-                                                         ["Motorista", "Influenciador", "Apoio", "Coordenacao"])
+            # --- AÇÃO: CADASTRAR ---
+            with aba_cadastrar:
+                with st.form("form_rh_cadastrar", clear_on_submit=True):
+                    col_n, col_t = st.columns(2)
+                    with col_n:
+                        nome_colab = st.text_input("Nome Completo / Apelido")
+                        telefone_colab = st.text_input("Telefone (WhatsApp)")
+                    with col_t:
+                        tag_colab = st.selectbox("Patente (Função)", ["Motorista", "Influenciador", "Apoio", "Coordenacao"])
 
-                            if st.form_submit_button("Cadastrar Membro"):
-                                if nome_colab:
-                                    try:
-                                        supabase.table("rh_colaboradores").insert({
-                                            "nome": nome_colab.strip(),
-                                            "tag": tag_colab,
-                                            "telefone": telefone_colab.strip(),
-                                            "ativo": True
-                                        }).execute()
-                                        st.success(
-                                            f"✅ {nome_colab} foi convocado(a) como {tag_colab} e já pode logar no sistema!")
-                                        time.sleep(1)
-                                        st.rerun()  # Atualiza a página para mostrar na tabela
-                                    except Exception as e:
-                                        st.error(f"Erro ao cadastrar membro: {e}")
-                                else:
-                                    st.warning("⚠️ O nome do colaborador é obrigatório.")
-
-                    # --- AÇÃO: EDITAR ---
-                    with aba_editar:
-                        if opcoes_rh:
-                            nome_selecionado = st.selectbox("Selecione o membro para editar:",
-                                                            options=list(opcoes_rh.keys()), key="sel_edita")
-                            dados_atuais = opcoes_rh[nome_selecionado]
-
-                            with st.form("form_rh_editar"):
-                                col_n, col_t = st.columns(2)
-                                with col_n:
-                                    novo_nome = st.text_input("Nome", value=dados_atuais['nome'])
-                                    novo_telefone = st.text_input("Telefone (WhatsApp)",
-                                                                  value=dados_atuais.get('telefone', ''))
-                                with col_t:
-                                    patentes = ["Motorista", "Influenciador", "Apoio", "Coordenacao"]
-                                    # Descobre o índice da patente atual para deixar pré-selecionado
-                                    idx_patente = patentes.index(dados_atuais['tag']) if dados_atuais[
-                                                                                             'tag'] in patentes else 0
-                                    nova_tag = st.selectbox("Nova Patente", patentes, index=idx_patente)
-
-                                if st.form_submit_button("💾 Salvar Alterações"):
-                                    try:
-                                        supabase.table("rh_colaboradores").update({
-                                            "nome": novo_nome.strip(),
-                                            "tag": nova_tag,
-                                            "telefone": novo_telefone.strip()
-                                        }).eq("id", dados_atuais["id"]).execute()
-                                        st.success(f"✅ Dados de {novo_nome} atualizados com sucesso!")
-                                        time.sleep(1)
-                                        st.rerun()
-                                    except Exception as e:
-                                        st.error(f"Erro ao atualizar: {e}")
+                    if st.form_submit_button("Cadastrar Membro"):
+                        if nome_colab:
+                            try:
+                                supabase.table("rh_colaboradores").insert({
+                                    "nome": nome_colab.strip(),
+                                    "tag": tag_colab,
+                                    "telefone": telefone_colab.strip(),
+                                    "ativo": True
+                                }).execute()
+                                st.success(f"✅ {nome_colab} foi convocado(a) como {tag_colab} e já pode logar no sistema!")
+                                time.sleep(1)
+                                st.rerun()  # Atualiza a página para mostrar na tabela
+                            except Exception as e:
+                                st.error(f"Erro ao cadastrar membro: {e}")
                         else:
-                            st.info("Nenhum membro ativo para editar.")
+                            st.warning("⚠️ O nome do colaborador é obrigatório.")
 
-                    # --- AÇÃO: INATIVAR ---
-                    with aba_inativar:
-                        if opcoes_rh:
-                            nome_inativar = st.selectbox("Selecione o membro para afastar/inativar:",
-                                                         options=list(opcoes_rh.keys()), key="sel_inativa")
-                            dados_inativar = opcoes_rh[nome_inativar]
+            # --- AÇÃO: EDITAR ---
+            with aba_editar:
+                if opcoes_rh:
+                    nome_selecionado = st.selectbox("Selecione o membro para editar:", options=list(opcoes_rh.keys()), key="sel_edita")
+                    dados_atuais = opcoes_rh[nome_selecionado]
 
-                            with st.form("form_rh_inativar"):
-                                st.warning(
-                                    f"⚠️ Tem certeza que deseja inativar **{nome_inativar}**? Esta pessoa não poderá mais acessar o sistema, mas o histórico de horas dela será mantido.")
-                                if st.form_submit_button("❌ Confirmar Inativação", type="primary"):
-                                    try:
-                                        supabase.table("rh_colaboradores").update({"ativo": False}).eq("id",
-                                                                                                       dados_inativar[
-                                                                                                           "id"]).execute()
-                                        st.success(f"✅ {nome_inativar} foi afastado(a) da operação.")
-                                        time.sleep(1)
-                                        st.rerun()
-                                    except Exception as e:
-                                        st.error(f"Erro ao inativar: {e}")
-                        else:
-                            st.info("Nenhum membro ativo para inativar.")
+                    with st.form("form_rh_editar"):
+                        col_n, col_t = st.columns(2)
+                        with col_n:
+                            novo_nome = st.text_input("Nome", value=dados_atuais['nome'])
+                            novo_telefone = st.text_input("Telefone (WhatsApp)", value=dados_atuais.get('telefone', ''))
+                        with col_t:
+                            patentes = ["Motorista", "Influenciador", "Apoio", "Coordenacao"]
+                            idx_patente = patentes.index(dados_atuais['tag']) if dados_atuais['tag'] in patentes else 0
+                            nova_tag = st.selectbox("Nova Patente", patentes, index=idx_patente)
 
-                    st.markdown("---")
-                    st.subheader("📋 Alcateia Atual (Relatório Geral)")
-                    try:
-                        # Mostramos a tabela atualizada sempre que a página carrega
-                        if colaboradores:
-                            df_rh = pd.DataFrame(colaboradores)
-                            # Organizar a tabela para ficar mais legível (ignoramos o ID e Ativo visualmente)
-                            df_viz = df_rh[["nome", "tag", "telefone"]]
-                            df_viz.columns = ["Nome", "Patente (Tag)", "Telefone"]
-                            st.dataframe(df_viz, use_container_width=True)
-                        else:
-                            st.info("Nenhum membro cadastrado ainda.")
-                    except Exception as e:
-                        pass
+                        if st.form_submit_button("💾 Salvar Alterações"):
+                            try:
+                                supabase.table("rh_colaboradores").update({
+                                    "nome": novo_nome.strip(),
+                                    "tag": nova_tag,
+                                    "telefone": novo_telefone.strip()
+                                }).eq("id", dados_atuais["id"]).execute()
+                                st.success(f"✅ Dados de {novo_nome} atualizados com sucesso!")
+                                time.sleep(1)
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Erro ao atualizar: {e}")
+                else:
+                    st.info("Nenhum membro ativo para editar.")
+
+            # --- AÇÃO: INATIVAR ---
+            with aba_inativar:
+                if opcoes_rh:
+                    nome_inativar = st.selectbox("Selecione o membro para afastar/inativar:", options=list(opcoes_rh.keys()), key="sel_inativa")
+                    dados_inativar = opcoes_rh[nome_inativar]
+
+                    with st.form("form_rh_inativar"):
+                        st.warning(f"⚠️ Tem certeza que deseja inativar **{nome_inativar}**? Esta pessoa não poderá mais acessar o sistema, mas o histórico de horas dela será mantido.")
+                        if st.form_submit_button("❌ Confirmar Inativação", type="primary"):
+                            try:
+                                supabase.table("rh_colaboradores").update({"ativo": False}).eq("id", dados_inativar["id"]).execute()
+                                st.success(f"✅ {nome_inativar} foi afastado(a) da operação.")
+                                time.sleep(1)
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Erro ao inativar: {e}")
+                else:
+                    st.info("Nenhum membro ativo para inativar.")
+
+            st.markdown("---")
+            st.subheader("📋 Alcateia Atual (Relatório Geral)")
+            try:
+                if colaboradores:
+                    df_rh = pd.DataFrame(colaboradores)
+                    df_viz = df_rh[["nome", "tag", "telefone"]]
+                    df_viz.columns = ["Nome", "Patente (Tag)", "Telefone"]
+                    st.dataframe(df_viz, use_container_width=True)
+                else:
+                    st.info("Nenhum membro cadastrado ainda.")
+            except Exception as e:
+                pass
 
     # --- ABA DE RELATÓRIOS E RH (TERMOS BLINDADOS) ---
     with aba5:
@@ -467,10 +452,3 @@ def script_o_olho_da_leoa():
                         st.warning("Ainda não há registros de ponto no sistema.")
                 except Exception as e:
                     st.error(f"Erro ao compilar o extrato: {e}")
-
-# --- 6. Roteamento Principal ---
-if not st.session_state["logado"]: tela_login()
-else:
-    if st.session_state["perfil"] == "Lider_Rua": script_manada_de_leao()
-    elif st.session_state["perfil"] == "Influenciador": script_a_selva()
-    elif st.session_state["perfil"] == "Coordenacao": script_o_olho_da_leoa()
