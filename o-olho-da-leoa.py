@@ -336,8 +336,10 @@ def script_a_selva():
                     "logo_visivel": logo_visivel,
                     "views": views,
                     "alcance": alcance,
-                    "codigo_auditoria": codigo_unico,
+                    "codigo_criptografico": codigo_unico,  # <- Coluna corrigida!
                     "pontos_gerados": pontos_totais
+                    # Nota do Tutor: O 'status_auditoria' não precisa ser enviado,
+                    # pois o seu Supabase já vai colocar 'Pendente' automaticamente!
                 }).execute()
 
                 st.success(f"✅ Auditoria enviada com sucesso!")
@@ -345,8 +347,8 @@ def script_a_selva():
                 st.info(f"🏆 Pontuação calculada: **{pontos_totais} pontos** gerados para a sua equipe!")
                 st.warning("⚠️ IMPORTANTE: Renomeie o seu print de comprovação com o código acima e salve na nuvem!")
             except Exception as e:
-                st.error(
-                    f"Erro ao salvar na base de dados. Verifique se as colunas estão corretas no Supabase. Detalhe: {e}")
+                st.error(f"Erro ao salvar na base de dados. Detalhe: {e}")
+
 
 # --- 6. Roteamento Principal (O Guarda de Trânsito) ---
 if not st.session_state["logado"]:
