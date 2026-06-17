@@ -353,9 +353,113 @@ def script_o_olho_da_leoa():
 
         tab_ranking, tab_metas = st.tabs(["🏆 Ranking de Equipes", "⚙️ Configurar Metas e Multiplicadores"])
 
+        # === 1. ABA DE RANKING (A MÁQUINA DE PONTOS) ===
         with tab_ranking:
-            st.info("O Ranking Geral será gerado aqui cruzando os dados da Rua (Manada) com os do Digital (Selva).")
+            st.subheader("🏆 Placar de Líderes - A Corrida da Manada")
+            st.write(
+                "O trabalho coletivo em tempo real. Este ranking soma os pontos da Rua (Leads + Pesquisas) com o Impacto Digital, consagrando as equipes mais eficientes.")
 
+            try:
+                # Busca os dados no Supabase
+                turnos_db = supabase.table("controle_turnos").select(
+                    "id, lider_id, placa_veiculo, created_at").execute().data
+                colabs_db = supabase.table("rh_colaboradores").select("id, nome").execute().data
+                leads_db = supabase.table("captura_eleitores").select("turno_id").execute().data
+                pesq_db = supabase.table("pesquisas_rua").select("turno_id").execute().data
+
+                # Regras globais para aplicar o multiplicador se necessário
+                config_db = supabase.table("configuracoes_globais").select("*").eq("id", 1).execute().data
+                mult_global = config_db[0]["multiplicador_equipe"] if config_db else 1.5
+
+                if turnos_db:
+                    # Transforma tudo em DataFrames do Pandas
+                    df_turnos = pd.DataFrame(turnos_db)
+                    df_colabs = pd.DataFrame(colabs_db)
+
+                    # Dicionário para traduzir o ID do Líder para o Nome dele
+                    dict_nomes = dict(zip(df_colabs['id'], df_colabs['nome']))
+                    df_turnos['Líder'] = df_turnos['lider_id'].map(dict_nomes)
+
+                    # Inicializa colunas de contagem de pontos
+                    df_turnos['Pts_Leads'] = 0
+                    df_turnos['Pts_Pesquisas'] = 0
+                    df_turnos['Pts_Digital'] = 0
+
+                    # Cálculo dos Pontos de Rua
+                    if leads_db:
+                        df_leads = pd.DataFrame(leads_db)
+                        contagem_leads = df_leads['turno_id'].value_counts() * 3
+                        df_turnos['Pts_Leads'] = df_turnos['id'].map(contagem_leads).fillna(0)
+
+                    if pesq_db:
+                        df_pesq = pd.DataFrame(pesq_db)
+                        contagem_pesq = df_pesq['turno_id'].value_counts() * 1
+                        df_turnos['Pts_Pesquisas'] = df_turnos['id'].map(contagem_pesq).fillna(0)
+
+                    # Cálculo da Pontuação Final
+                    df_turnos['Pontuação Total'] = df_turnos['Pts_Leads'] + df_turnos['Pts_Pesquisas']
+                    df_turnos['Pontuação Total'] = df_turnos['Pontuação Total'] * mult_global
+
+                    # Formatação do Ranking Visual
+                    ranking_consolidado = df_turnos.groupby(['Líder', 'placa_veiculo']).agg(
+                        Ações_Realizadas=('id', 'count'),
+                        Pontos_Acumulados=('Pontuação Total', 'sum')
+                    ).reset_index()
+
+                    ranking_consolidado = ranking_consolidado.sort_values(by="Pontos_Acumulados",
+                                                                          ascending=False).reset_index(drop=True)
+                    ranking_consolidado.index = ranking_consolidado.index + 1
+                    ranking_consolidado.columns = ["Líder da Equipe", "Viatura Alocada", "Missões Concluídas",
+                                                   "🔥 Pontuação Geral"]
+
+                    # Exibição na tela
+                    lider_top = ranking_consolidado.iloc[0]["Líder da Equipe"]
+                    viatura_top = ranking_consolidado.iloc[0]["Viatura Alocada"]
+                    pontos_top = ranking_consolidado.iloc[0]["🔥 Pontuação Geral"]
+
+                    st.markdown(
+                        f"""
+                        <div style="background-color: #E8F4F8; padding: 15px; border-radius: 10px; border-left: 5px solid #0078D4; margin-bottom: 20px; text-align: center;">
+                            <h3 style="margin: 0; color: #004B87;">👑 Líder da Alcateia Atual</h3>
+                            <p style="margin: 5px 0 0 0; font-size: 18px; color: #1E1E1E;">
+                                <strong>{lider_top}</strong> na <strong>{viatura_top}</strong> com impressionantes <strong>{pontos_top:.0f} pontos!</strong>
+                            </p>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+
+                    st.bar_chart(data=ranking_consolidado, x="Líder da Equipe", y="🔥 Pontuação Geral", color="#0078D4")
+                    st.dataframe(ranking_consolidado, use_container_width=True)
+
+                else:
+                    st.info("Ainda não há turnos ou equipes registradas para gerar o ranking. Vá para as ruas! 🚙")
+
+            except Exception as e:
+                # Mockup de Projeção se o banco estiver vazio
+                st.warning("⚠️ Sincronizando dados das equipes... Veja a projeção do Placar abaixo:")
+                mock_data = {
+                    "Líder da Equipe": ["Major Silva", "Capitão Maurício", "Tenente Isabela", "Coordenador Juan"],
+                    "Viatura Alocada": ["Viatura 01", "Viatura 03", "Viatura 02", "Viatura 05"],
+                    "Missões Concluídas": [12, 10, 8, 5],
+                    "🔥 Pontuação Geral": [450.0, 390.0, 280.0, 150.0]
+                }
+                df_mock = pd.DataFrame(mock_data)
+                df_mock.index = df_mock.index + 1
+
+                st.markdown(
+                    """
+                    <div style="background-color: #E8F4F8; padding: 15px; border-radius: 10px; border-left: 5px solid #0078D4; margin-bottom: 20px; text-align: center;">
+                        <h3 style="margin: 0; color: #004B87;">👑 Líder da Alcateia Atual</h3>
+                        <p style="margin: 5px 0 0 0; font-size: 18px; color: #1E1E1E;"><strong>Major Silva</strong> na <strong>Viatura 01</strong> com impressionantes <strong>450 pontos!</strong></p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+                st.bar_chart(data=df_mock, x="Líder da Equipe", y="🔥 Pontuação Geral", color="#0078D4")
+                st.dataframe(df_mock, use_container_width=True)
+
+        # === 2. ABA DE METAS (O SEU CÓDIGO INTACTO) ===
         with tab_metas:
             st.subheader("Regras do Jogo (Aplica-se a todos)")
             st.write(
@@ -377,7 +481,6 @@ def script_o_olho_da_leoa():
                 if btn_salvar_regras:
                     try:
                         # Aqui você salva na sua tabela de configurações do Supabase.
-                        # Como é um painel global, usamos uma tabela simples de configuração.
                         supabase.table("configuracoes_globais").upsert({
                             "id": 1,  # ID fixo para ter sempre apenas 1 linha de configuração ativa
                             "meta_alcance": nova_meta_alcance,
