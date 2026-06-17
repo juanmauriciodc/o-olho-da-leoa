@@ -137,12 +137,9 @@ def script_manada_de_leao():
                         novo_turno_id = res_turno.data[0]["id"]
 
                         materiais_para_inserir = [
-                            {"turno_id": novo_turno_id, "material_nome": "Panfletos", "qtd_embarcada": panfletos,
-                             "qtd_sobra": 0},
-                            {"turno_id": novo_turno_id, "material_nome": "Adesivos", "qtd_embarcada": adesivos,
-                             "qtd_sobra": 0},
-                            {"turno_id": novo_turno_id, "material_nome": "Bandeiras", "qtd_embarcada": bandeiras,
-                             "qtd_sobra": 0}
+                            {"turno_id": novo_turno_id, "material_nome": "Panfletos", "qtd_embarcada": panfletos, "qtd_sobra": 0},
+                            {"turno_id": novo_turno_id, "material_nome": "Adesivos", "qtd_embarcada": adesivos, "qtd_sobra": 0},
+                            {"turno_id": novo_turno_id, "material_nome": "Bandeiras", "qtd_embarcada": bandeiras, "qtd_sobra": 0}
                         ]
                         materiais_para_inserir = [m for m in materiais_para_inserir if m["qtd_embarcada"] > 0]
 
@@ -161,11 +158,9 @@ def script_manada_de_leao():
     else:
         st.success(f"🟢 Turno #{st.session_state['turno_id_atual']} Em Andamento. Viatura na rua!")
 
-        # --- NOVO: O LETREIRO DE ROTA INTELIGENTE ---
+        # --- O LETREIRO DE ROTA INTELIGENTE ---
         try:
-            # Puxa do banco a primeira rota com status 'Pendente'
-            resp_rotas = supabase.table("planejamento_rotas").select("*").eq("status", "Pendente").order("id").limit(
-                1).execute()
+            resp_rotas = supabase.table("planejamento_rotas").select("*").eq("status", "Pendente").order("id").limit(1).execute()
             rota_atual = resp_rotas.data[0] if len(resp_rotas.data) > 0 else None
         except Exception:
             rota_atual = None
@@ -177,7 +172,6 @@ def script_manada_de_leao():
             if rota_atual.get('descricao'):
                 st.info(f"**Missão/Instrução:** {rota_atual['descricao']}")
         else:
-            # Se não tiver rota enviada pelo Script 3, o líder não fica travado
             st.title("📍 Rota Livre (Atuação por Oportunidade)")
             st.subheader("🎯 Bairro: Atuação Dinâmica")
             st.info("A fila de missões despachadas pela coordenação está vazia.")
@@ -260,7 +254,6 @@ def script_manada_de_leao():
                     try:
                         rota_id_db = rota_atual["id"] if rota_atual else None
 
-                        # 1. Salva o clima enviando também o ID da rota
                         supabase.table("rotas_e_clima").insert({
                             "turno_id": st.session_state["turno_id_atual"],
                             "rota_id": rota_id_db,
@@ -268,10 +261,8 @@ def script_manada_de_leao():
                             "justificativa_abandono": justificativa
                         }).execute()
 
-                        # 2. Muda o status da rota no banco para que a próxima apareça
                         if rota_atual:
-                            supabase.table("planejamento_rotas").update({"status": "Concluída"}).eq("id", rota_atual[
-                                "id"]).execute()
+                            supabase.table("planejamento_rotas").update({"status": "Concluída"}).eq("id", rota_atual["id"]).execute()
 
                         st.success("Rota finalizada com sucesso! O letreiro vai atualizar.")
                         st.rerun()
@@ -286,106 +277,6 @@ def script_manada_de_leao():
             st.session_state["turno_ativo"] = False
             st.session_state["turno_id_atual"] = None
             st.rerun()
-
-    # ==========================================
-    # TELA DA RUA (Operação Tática)
-    # ==========================================
-    else:
-        st.success(f"🟢 Turno #{st.session_state['turno_id_atual']} Em Andamento. Viatura na rua!")
-        st.markdown("---")
-
-        # --- MÓDULO 1: CAPTAÇÃO DE LEADS ---
-        st.subheader("📱 1. Captação de Eleitores")
-        with st.form("form_captura", clear_on_submit=True):
-            col_nome, col_zap = st.columns(2)
-            with col_nome:
-                nome_eleitor = st.text_input("Nome do Eleitor")
-            with col_zap:
-                zap_eleitor = st.text_input("WhatsApp (com DDD)")
-            bairro_eleitor = st.text_input("Bairro")
-
-            if st.form_submit_button("Salvar Contato (+3 Pontos)"):
-                if nome_eleitor and zap_eleitor:
-                    try:
-                        supabase.table("captura_eleitores").insert({
-                            "turno_id": st.session_state["turno_id_atual"],
-                            "nome_eleitor": nome_eleitor.strip(),
-                            "whatsapp": zap_eleitor.strip(),
-                            "bairro": bairro_eleitor.strip()
-                        }).execute()
-                        st.toast("✅ Lead capturado e salvo na base!")
-                    except Exception as e:
-                        st.error("Erro ao salvar contato.")
-                else:
-                    st.warning("⚠️ Preencha Nome e WhatsApp para pontuar.")
-
-        st.markdown("---")
-
-        # --- MÓDULO 2: SENSO DA RUA ---
-        st.subheader("📊 2. Senso da Rua (Pesquisa Rápida)")
-
-        try:
-            resp_cand = supabase.table("candidatos").select("nome").eq("ativo", True).execute()
-            nomes_candidatos = [c["nome"] for c in resp_cand.data]
-        except Exception:
-            nomes_candidatos = []
-
-        opcoes_voto = ["Selecione..."] + nomes_candidatos + ["Outros Oponentes", "Branco / Nulo", "Indeciso / Não sabe"]
-
-        with st.form("form_pesquisa", clear_on_submit=True):
-            nome_eleitor_pesq = st.text_input("Nome do Eleitor (Obrigatório para validar a pesquisa)")
-            candidato_escolhido = st.selectbox(
-                "Intenção de Voto (Espontânea/Estimulada):",
-                opcoes_voto
-            )
-
-            if st.form_submit_button("Registrar Voto (+1 Ponto)"):
-                # A nova trava antifraude entra aqui:
-                if not nome_eleitor_pesq.strip():
-                    st.error("🛑 Trava de Segurança: É obrigatório informar o nome do eleitor!")
-                elif candidato_escolhido == "Selecione...":
-                    st.warning("⚠️ Selecione uma intenção de voto válida.")
-                else:
-                    try:
-                        supabase.table("pesquisas_rua").insert({
-                            "turno_id": st.session_state["turno_id_atual"],
-                            "nome_eleitor": nome_eleitor_pesq.strip(),
-                            "intencao_voto": candidato_escolhido
-                        }).execute()
-                        st.toast("✅ Voto validado e computado no radar!")
-                    except Exception as e:
-                        st.error(f"Erro ao salvar pesquisa: {e}")
-
-        st.markdown("---")
-
-        # --- MÓDULO 3: CHECK-OUT ---
-        st.subheader("🏁 3. Encerrar Rota (Check-out)")
-        with st.form("form_checkout"):
-            clima = st.radio("Nível de aceitação da rua nesta rota:",
-                             ["🤩 Ótimo", "🙂 Bom", "😐 Regular", "🛑 Baixo"], horizontal=True)
-
-            justificativa = ""
-            if clima == "🛑 Baixo":
-                justificativa = st.text_input("⚠️ Motivo da baixa aceitação (Obrigatório)")
-
-            btn_encerrar = st.form_submit_button("Encerrar Turno e Gerar Relatório")
-
-            if btn_encerrar:
-                if clima == "🛑 Baixo" and not justificativa.strip():
-                    st.error("🛑 Justifique o motivo de classificar o clima como 'Baixo'.")
-                else:
-                    try:
-                        supabase.table("rotas_e_clima").insert({
-                            "turno_id": st.session_state["turno_id_atual"],
-                            "clima_rua": clima,
-                            "justificativa_abandono": justificativa
-                        }).execute()
-
-                        st.session_state["turno_ativo"] = False
-                        st.session_state["turno_id_atual"] = None
-                        st.rerun()
-                    except Exception as e:
-                        st.error("Erro ao encerrar o turno.")
 
 # --- 6. Roteamento Principal (O Guarda de Trânsito) ---
 if not st.session_state["logado"]:
