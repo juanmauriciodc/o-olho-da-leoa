@@ -221,14 +221,20 @@ def script_a_selva():
     st.write(f"Influenciador(a) Atirador(a): **{st.session_state['nome_usuario']}**")
     st.markdown("---")
 
-    # === NOVO QUADRO DE REGRAS E PONTOS (UX ACELERADA) ===
+    # === QUADRO DE REGRAS ATUALIZADO: AZUL CLARO DO PARTIDO ===
     st.markdown(
         """
-        <div style="background-color: #1E1E1E; padding: 15px; border-radius: 10px; border-left: 5px solid #FFD700; margin-bottom: 20px;">
-            <h4 style="margin-top: 0; color: #FFD700;">🏆 Regras da Alcateia & Pontuação Digital</h4>
-            <p style="margin-bottom: 8px;"><strong>👥 Força Coletiva:</strong> O trabalho aqui é 100% em equipe! Os pontos gerados pelas suas visualizações e alcance não vão só para você; eles são <strong>distribuídos no exato momento para toda a equipe</strong> que operou no mesmo dia e turno.</p>
-            <p style="margin-bottom: 8px;"><strong>📸 Validação Única:</strong> Faça o registro assim que a postagem atingir o maior alcance possível. Só é permitido um upload por ação, que servirá como prova auditada pela coordenação.</p>
-            <p style="margin-bottom: 0;"><strong>⚡ Multiplicador Global:</strong> Mantenha a sintonia com os líderes de rua! Se a sua equipe bater as metas combinadas de material físico e engajamento digital, todos recebem o bônus do multiplicador configurado pelo QG.</p>
+        <div style="background-color: #E8F4F8; padding: 18px; border-radius: 10px; border-left: 5px solid #0078D4; margin-bottom: 25px;">
+            <h4 style="margin-top: 0; color: #004B87; font-weight: bold; font-family: sans-serif;">🏆 Regras da Alcateia & Pontuação Digital</h4>
+            <p style="margin-bottom: 10px; color: #1E1E1E; font-size: 15px; line-height: 1.5;">
+                <strong>👥 Força Coletiva:</strong> O trabalho aqui é 100% em equipe! Os pontos gerados pelas suas visualizações e alcance não vão só para você; eles são <strong>distribuídos no exato momento para toda a equipe</strong> que operou no mesmo dia e turno.
+            </p>
+            <p style="margin-bottom: 10px; color: #1E1E1E; font-size: 15px; line-height: 1.5;">
+                <strong>📸 Validação Única:</strong> Faça o registro assim que a postagem atingir o maior alcance possível. Só é permitido um upload por ação, que servirá como prova auditada pela coordenação.
+            </p>
+            <p style="margin-bottom: 0; color: #1E1E1E; font-size: 15px; line-height: 1.5;">
+                <strong>⚡ Multiplicador Global:</strong> Mantenha a sintonia com os líderes de rua! Se a sua equipe bater as metas combinadas de material físico e engajamento digital, todos recebem o bônus do multiplicador configurado pelo QG.
+            </p>
         </div>
         """,
         unsafe_allow_html=True
