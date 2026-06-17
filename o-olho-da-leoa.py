@@ -445,25 +445,26 @@ def script_o_olho_da_leoa():
         "👁️ Visão", "👑 Gamificação", "🔎 O Covil", "🐾 Despacho", "💰 O Tesouro (Controle de Turnos e AC)"
     ])
 
-    # === 1. MÓDULO VISÃO (DASHBOARD EXECUTIVO) ===
+    # === 1. MÓDULO VISÃO (SUPER DASHBOARD EXECUTIVO) ===
     with aba1:
         st.header("👁️ Visão Global - O Termômetro da Campanha")
-        st.write("Acompanhamento de métricas, conversões e intenção de voto em tempo real.")
+        st.write("Acompanhamento das métricas de rua e cruzamento com as intenções de voto dos institutos oficiais.")
         st.markdown("---")
 
         try:
-            # 1. BUSCA DOS DADOS DE PRODUÇÃO NO SUPABASE
+            # ==========================================
+            # PARTE 1: DADOS DAS RUAS (NOSSA OPERAÇÃO)
+            # ==========================================
             resp_leads = supabase.table("captura_eleitores").select("id").execute()
             resp_pesquisas = supabase.table("pesquisas_rua").select("intencao_voto").execute()
             resp_turnos = supabase.table("controle_turnos").select("id").execute()
             resp_clima = supabase.table("rotas_e_clima").select("clima_rua").execute()
 
-            # Conta os totais
             total_leads = len(resp_leads.data) if resp_leads.data else 0
             total_pesquisas = len(resp_pesquisas.data) if resp_pesquisas.data else 0
             total_turnos = len(resp_turnos.data) if resp_turnos.data else 0
 
-            # 2. RENDERIZAÇÃO DOS KPIS (INDICADORES CHAVE)
+            # KPIs Superiores
             col_k1, col_k2, col_k3 = st.columns(3)
             with col_k1:
                 st.metric(label="👥 Total de Leads (WhatsApp)", value=total_leads, delta="Base de Disparo")
@@ -473,39 +474,73 @@ def script_o_olho_da_leoa():
                 st.metric(label="🚙 Turnos Executados", value=total_turnos, delta="Esforço de Rua")
 
             st.markdown("---")
+            st.subheader("🔥 Termômetro Próprio (Dados captados pela Manada)")
 
-            # 3. GRÁFICOS DE ANÁLISE
             col_g1, col_g2 = st.columns(2)
 
-            # GRÁFICO 1: INTENÇÃO DE VOTO
             with col_g1:
-                st.subheader("🗳️ Intenção de Voto")
+                st.write("**🗳️ Intenção de Voto (Pesquisa Interna)**")
                 if resp_pesquisas.data and total_pesquisas > 0:
                     df_votos = pd.DataFrame(resp_pesquisas.data)
-                    # Conta a quantidade de votos por candidato
                     contagem_votos = df_votos['intencao_voto'].value_counts().reset_index()
                     contagem_votos.columns = ['Candidato', 'Votos']
-
-                    # Gráfico de barras nativo do Streamlit
                     st.bar_chart(data=contagem_votos.set_index('Candidato'), color="#0078D4")
                 else:
                     st.info("Aguardando os primeiros dados de pesquisa das ruas...")
 
-            # GRÁFICO 2: CLIMA DA RUA (ACEITAÇÃO)
             with col_g2:
-                st.subheader("🌤️ Termômetro de Aceitação (Clima)")
+                st.write("**🌤️ Aceitação do Eleitor (Clima)**")
                 if resp_clima.data and len(resp_clima.data) > 0:
                     df_clima = pd.DataFrame(resp_clima.data)
                     contagem_clima = df_clima['clima_rua'].value_counts().reset_index()
                     contagem_clima.columns = ['Clima', 'Registros']
-
                     st.bar_chart(data=contagem_clima.set_index('Clima'), color="#FF8C00")
                 else:
-                    st.info("Aguardando os líderes finalizarem as primeiras rotas...")
+                    st.info("Aguardando os líderes finalizarem as rotas para o Clima...")
+
+            st.markdown("---")
+
+            # ==========================================
+            # PARTE 2: DADOS DE MERCADO (PESQUISAS OFICIAIS)
+            # ==========================================
+            st.subheader("📈 Painel de Pesquisas Oficiais (Institutos)")
+
+            resp_radar = supabase.table("candidatos").select(
+                "nome, pct_datafolha, pct_ipespe, pct_fsb, pct_realtime").eq("ativo", True).execute()
+
+            if resp_radar.data and len(resp_radar.data) > 0:
+                df_radar = pd.DataFrame(resp_radar.data)
+
+                linha1_col1, linha1_col2 = st.columns(2)
+                linha2_col1, linha2_col2 = st.columns(2)
+
+                with linha1_col1:
+                    st.write("**📊 Instituto Datafolha**")
+                    df_datafolha = df_radar[['nome', 'pct_datafolha']].rename(columns={'pct_datafolha': 'Intenção (%)'})
+                    st.bar_chart(data=df_datafolha.set_index('nome'), color="#0078D4")
+
+                with linha1_col2:
+                    st.write("**📊 Instituto IPESPE**")
+                    df_ipespe = df_radar[['nome', 'pct_ipespe']].rename(columns={'pct_ipespe': 'Intenção (%)'})
+                    st.bar_chart(data=df_ipespe.set_index('nome'), color="#004B87")
+
+                with linha2_col1:
+                    st.write("**📊 FSB Pesquisa**")
+                    df_fsb = df_radar[['nome', 'pct_fsb']].rename(columns={'pct_fsb': 'Intenção (%)'})
+                    st.bar_chart(data=df_fsb.set_index('nome'), color="#4169E1")
+
+                with linha2_col2:
+                    st.write("**📊 Real Time Big Data**")
+                    df_realtime = df_radar[['nome', 'pct_realtime']].rename(columns={'pct_realtime': 'Intenção (%)'})
+                    st.bar_chart(data=df_realtime.set_index('nome'), color="#4682B4")
+            else:
+                st.info("Nenhum dado cadastrado. Cadastre os candidatos na aba 'Alcateia (RH) > Realeza'.")
 
         except Exception as e:
-            # MOCKUP DO SÊNIOR: Para não ficar tela em branco caso o banco ainda esteja sendo montado
-            st.warning("⚠️ Compilando dados em tempo real... Veja uma projeção estrutural do Dashboard:")
+            # ==========================================
+            # MOCKUP DE SEGURANÇA (Se o banco falhar ou faltar colunas)
+            # ==========================================
+            st.warning("⚠️ Compilando dados estruturais... Veja a projeção do Super Dashboard:")
 
             c1, c2, c3 = st.columns(3)
             c1.metric("👥 Total de Leads", "1.245", "+34 hoje")
@@ -513,23 +548,15 @@ def script_o_olho_da_leoa():
             c3.metric("🚙 Turnos Executados", "45", "6 viaturas")
 
             st.markdown("---")
-            cg1, cg2 = st.columns(2)
-
-            with cg1:
-                st.subheader("🗳️ Intenção de Voto (Projeção)")
-                mock_votos = pd.DataFrame({
-                    "Candidato": ["Nosso Candidato", "Oponente A", "Indeciso", "Branco/Nulo"],
-                    "Votos": [450, 210, 150, 80]
-                })
-                st.bar_chart(data=mock_votos.set_index('Candidato'), color="#0078D4")
-
-            with cg2:
-                st.subheader("🌤️ Termômetro (Clima da Rua)")
-                mock_clima = pd.DataFrame({
-                    "Clima": ["🤩 Ótimo", "🙂 Bom", "😐 Regular", "🛑 Baixo"],
-                    "Registros": [20, 15, 5, 2]
-                })
-                st.bar_chart(data=mock_clima.set_index('Clima'), color="#FF8C00")
+            st.subheader("📈 Painel de Pesquisas Oficiais (Projeção)")
+            l1, l2 = st.columns(2)
+            mock_cands = ["Celina Leão", "Oponente A", "Brancos/Nulos"]
+            with l1:
+                st.write("**📊 Instituto Datafolha**")
+                st.bar_chart(data=pd.DataFrame({"Intenção (%)": [38.0, 25.0, 22.0]}, index=mock_cands), color="#0078D4")
+            with l2:
+                st.write("**📊 Instituto IPESPE**")
+                st.bar_chart(data=pd.DataFrame({"Intenção (%)": [40.0, 22.0, 20.0]}, index=mock_cands), color="#004B87")
 
     with aba2:
         st.header("👑 Gamificação e Metas da Operação")
@@ -803,30 +830,81 @@ def script_o_olho_da_leoa():
             except: pass
 
         with tab_candidatos:
-            st.subheader("Adicionar Nome à Realeza (Radar de Pesquisas)")
-            with st.form("form_candidatos", clear_on_submit=True):
-                nome_cand = st.text_input("Nome do Candidato ou Partido")
-                if st.form_submit_button("Registrar no Sistema"):
-                    if nome_cand:
-                        try:
-                            supabase.table("candidatos").insert({"nome": nome_cand.strip(), "ativo": True}).execute()
-                            st.success(f"✅ {nome_cand} adicionado ao radar dos líderes de rua!")
-                        except Exception as e:
-                            st.error(f"Erro ao adicionar candidato: {e}")
-                    else:
-                        st.warning("⚠️ Digite um nome válido.")
+            st.subheader("🦁 Gerenciamento da Realeza e Pesquisas Oficiais")
 
-            st.markdown("---")
-            st.subheader("🦁 Realeza Atual (Candidatos Ativos na Rua)")
-            try:
-                resp_cand = supabase.table("candidatos").select("*").eq("ativo", True).execute()
-                if resp_cand.data:
-                    for c in resp_cand.data:
-                        st.write(f"▪️ **{c['nome']}**")
+            # Dividindo em abas internas para não entulhar a tela
+            sub_cadastrar, sub_atualizar_pesquisa = st.tabs(["➕ Cadastrar Nome", "📊 Atualizar % dos Institutos"])
+
+            # --- SUB-ABA 1: APENAS CADASTRAR O NOME ---
+            with sub_cadastrar:
+                with st.form("form_candidatos", clear_on_submit=True):
+                    nome_cand = st.text_input("Nome do Candidato ou Partido",
+                                              placeholder="Ex: Celina Leão, Brancos e Nulos, Oponente A")
+                    if st.form_submit_button("Registrar no Radar"):
+                        if nome_cand:
+                            try:
+                                supabase.table("candidatos").insert({
+                                    "nome": nome_cand.strip(),
+                                    "ativo": True,
+                                    "pct_datafolha": 0.0,
+                                    "pct_ipespe": 0.0,
+                                    "pct_fsb": 0.0,
+                                    "pct_realtime": 0.0
+                                }).execute()
+                                st.success(
+                                    f"✅ {nome_cand} adicionado ao radar! Agora você pode atualizar os percentuais na aba ao lado.")
+                                time.sleep(1)
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Erro ao adicionar: {e}")
+                        else:
+                            st.warning("⚠️ Digite um nome válido.")
+
+            # --- SUB-ABA 2: ATUALIZAR AS INTENÇÕES DE VOTO ---
+            with sub_atualizar_pesquisa:
+                try:
+                    resp_cand = supabase.table("candidatos").select("*").eq("ativo", True).order("nome").execute()
+                    lista_candidatos = resp_cand.data
+                    dict_cand = {c['nome']: c for c in lista_candidatos} if lista_candidatos else {}
+                except:
+                    dict_cand = {}
+
+                if dict_cand:
+                    cand_selecionado = st.selectbox("Selecione o Candidato para atualizar os números:",
+                                                    options=list(dict_cand.keys()))
+                    dados_cand = dict_cand[cand_selecionado]
+
+                    with st.form("form_atualizar_percentuais"):
+                        st.write(f"Atualizando intenções de voto para: **{cand_selecionado}**")
+
+                        col_p1, col_p2 = st.columns(2)
+                        with col_p1:
+                            v_datafolha = st.number_input("Datafolha (%)", min_value=0.0, max_value=100.0,
+                                                          value=float(dados_cand.get('pct_datafolha', 0.0)), step=0.1)
+                            v_ipespe = st.number_input("Ipespe (%)", min_value=0.0, max_value=100.0,
+                                                       value=float(dados_cand.get('pct_ipespe', 0.0)), step=0.1)
+                        with col_p2:
+                            v_fsb = st.number_input("FSB (%)", min_value=0.0, max_value=100.0,
+                                                    value=float(dados_cand.get('pct_fsb', 0.0)), step=0.1)
+                            v_realtime = st.number_input("Real Time Big Data (%)", min_value=0.0, max_value=100.0,
+                                                         value=float(dados_cand.get('pct_realtime', 0.0)), step=0.1)
+
+                        if st.form_submit_button("💾 Salvar Números Oficiais"):
+                            try:
+                                supabase.table("candidatos").update({
+                                    "pct_datafolha": v_datafolha,
+                                    "pct_ipespe": v_ipespe,
+                                    "pct_fsb": v_fsb,
+                                    "pct_realtime": v_realtime
+                                }).eq("id", dados_cand["id"]).execute()
+
+                                st.success(f"🔥 Dados de {cand_selecionado} consolidados com sucesso!")
+                                time.sleep(1)
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Erro ao atualizar números: {e}")
                 else:
-                    st.info("Nenhum candidato cadastrado no momento.")
-            except:
-                pass
+                    st.info("Cadastre os candidatos na aba ao lado primeiro.")
 
         # --- MÓDULO ALCATEIA (RH) PERFEITAMENTE ALINHADO ---
         with tab_rh:
