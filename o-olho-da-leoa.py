@@ -176,10 +176,21 @@ def script_manada_de_leao():
 
         # --- MÓDULO 2: SENSO DA RUA ---
         st.subheader("📊 2. Senso da Rua (Pesquisa Rápida)")
+
+        # O sistema tenta buscar os candidatos ativos no banco de dados
+        try:
+            resp_cand = supabase.table("candidatos").select("nome").eq("ativo", True).execute()
+            nomes_candidatos = [c["nome"] for c in resp_cand.data]
+        except Exception:
+            nomes_candidatos = []  # Se der erro ou a tabela estiver vazia, não quebra o app
+
+        # Monta a lista final (Selecione + Candidatos do Banco + Opções Padrão de escape)
+        opcoes_voto = ["Selecione..."] + nomes_candidatos + ["Outros Oponentes", "Branco / Nulo", "Indeciso / Não sabe"]
+
         with st.form("form_pesquisa", clear_on_submit=True):
             candidato_escolhido = st.selectbox(
                 "Intenção de Voto (Espontânea/Estimulada):",
-                ["Selecione...", "Apoio Total (Nosso Candidato)", "Oponente Principal", "Outros Oponentes", "Branco / Nulo", "Indeciso / Não sabe"]
+                opcoes_voto
             )
 
             if st.form_submit_button("Registrar Voto (+1 Ponto)"):
