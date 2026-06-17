@@ -189,9 +189,9 @@ def script_manada_de_leao():
         st.subheader("📱 1. Captação de Eleitores")
         with st.form("form_captura", clear_on_submit=True):  # Limpa os campos ao enviar
                     st.error("❌ Selecione pelo menos um membro para a equipe!")
-                elif panfletos == 0 and adesivos == 0 and bandeiras == 0:
+        elif panfletos == 0 and adesivos == 0 and bandeiras == 0:
                     st.error("🛑 Trava Logística Ativada: É obrigatório registrar o material embarcado!")
-                else:
+    else:
                     # Mapear os nomes selecionados para seus IDs
                     equipe_ids = [opcoes_equipe[nome] for nome in equipe_nomes]
 
@@ -203,7 +203,7 @@ def script_manada_de_leao():
                     }
                     res_turno = supabase.table("controle_turnos").insert(dados_turno).execute()
 
-                    if res_turno.data:
+                if res_turno.data:
                         novo_turno_id = res_turno.data[0]["id"]
 
                         # 2. INSERT na tabela estoque_materiais
