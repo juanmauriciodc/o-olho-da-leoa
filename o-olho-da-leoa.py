@@ -220,11 +220,11 @@ def script_a_selva():
     st.markdown("---")
 
     st.info(
-        "💡 **Regra de Ouro:** Monitore suas postagens. Quando achar que o post atingiu o pico de Alcance/Views, faça o registro. **Atenção:** Só é permitido um registro por link de publicação.")
+        "💡 **Regra de Ouro:** Suba o print (prova) do engajamento. O sistema irá gerar um Código de Protocolo único e renomear sua foto para a auditoria da coordenação.")
 
     # Formulário de Registro de Engajamento
     with st.form("form_reporte_digital", clear_on_submit=True):
-        st.subheader("📱 Registrar Desempenho de Postagem")
+        st.subheader("📱 Registrar Desempenho e Subir Print")
 
         col_d, col_t = st.columns(2)
         with col_d:
@@ -232,68 +232,72 @@ def script_a_selva():
         with col_t:
             turno_acao = st.selectbox("Turno da Ação", ["Manhã", "Tarde", "Noite", "Integral"])
 
-        link_post = st.text_input("Link da Publicação (Único e Obrigatório)",
-                                  placeholder="Ex: https://instagram.com/p/...")
-
         col_v, col_a = st.columns(2)
         with col_v:
             views = st.number_input("Visualizações (Views)", min_value=0, step=100)
         with col_a:
             alcance = st.number_input("Alcance (Reach)", min_value=0, step=100)
 
-        comprovante = st.file_uploader("Subir Print do Engajamento (Prova)", type=["png", "jpg", "jpeg"])
+        comprovante = st.file_uploader("📸 Subir Print do Engajamento (OBRIGATÓRIO)", type=["png", "jpg", "jpeg"])
 
-        btn_registrar = st.form_submit_button("🚀 Registrar Métrica e Distribuir Pontos")
+        btn_registrar = st.form_submit_button("🚀 Subir Print e Distribuir Pontos")
 
         if btn_registrar:
-            if not link_post.strip():
-                st.error("🛑 O Link da publicação é obrigatório para evitar duplicidade!")
+            if not comprovante:
+                st.error("🛑 O upload do print é OBRIGATÓRIO. Sem foto, sem pontos!")
             elif views == 0 and alcance == 0:
                 st.warning("⚠️ Você precisa ter pelo menos alguma view ou alcance para registrar.")
             else:
                 try:
-                    # 1. VERIFICAÇÃO DE DUPLICIDADE: Impede que o mesmo link seja cadastrado duas vezes
-                    busca_link = supabase.table("registro_influencia_digital").select("id").eq("link_postagem",
-                                                                                               link_post.strip()).execute()
+                    # 1. GERAR CÓDIGO DE AUDITORIA E RENOMEAR ARQUIVO
+                    # Usamos o ID do usuário e os segundos exatos de agora para garantir que nunca vai repetir
+                    timestamp = int(time.time())
+                    codigo_auditoria = f"INF{st.session_state['usuario_id']}-{timestamp}"
 
-                    if len(busca_link.data) > 0:
-                        st.error(
-                            "❌ Negado! Este link já foi registrado anteriormente. Não é possível atualizar as views de um post já validado.")
-                    else:
-                        # 2. INSERÇÃO DOS DADOS NO BANCO
-                        # Pegamos apenas o nome do arquivo se ele subir um print
-                        nome_arquivo = comprovante.name if comprovante else "Sem print"
+                    # Pegar a extensão original da imagem (.png, .jpg)
+                    extensao = comprovante.name.split('.')[-1]
+                    novo_nome_arquivo = f"{codigo_auditoria}.{extensao}"
 
-                        supabase.table("registro_influencia_digital").insert({
-                            "colaborador_id": st.session_state["usuario_id"],
-                            "data_referencia": str(data_acao),
-                            "turno_referencia": turno_acao,
-                            "link_postagem": link_post.strip(),
-                            "views": views,
-                            "alcance": alcance,
-                            "print_arquivo": nome_arquivo
-                        }).execute()
+                    # 2. INSERÇÃO DOS DADOS NO BANCO
+                    supabase.table("registro_influencia_digital").insert({
+                        "colaborador_id": st.session_state["usuario_id"],
+                        "data_referencia": str(data_acao),
+                        "turno_referencia": turno_acao,
+                        "codigo_auditoria": codigo_auditoria,
+                        "arquivo_comprovante": novo_nome_arquivo,
+                        "views": views,
+                        "alcance": alcance
+                    }).execute()
 
-                        st.success(
-                            f"🔥 Animal! Postagem validada. Os pontos gerados foram distribuídos para toda a equipe que operou no turno da {turno_acao} do dia {data_acao.strftime('%d/%m/%Y')}!")
-                        time.sleep(2)
-                        st.rerun()
+                    # 3. UPLOAD DA IMAGEM PARA O SUPABASE STORAGE (BUCKET)
+                    # Lê os bytes da imagem que o usuário subiu
+                    file_bytes = comprovante.read()
+                    # Faz o upload para a pasta "comprovantes" lá no Supabase
+                    supabase.storage.from_("comprovantes").upload(
+                        path=novo_nome_arquivo,
+                        file=file_bytes,
+                        file_options={"content-type": comprovante.type}
+                    )
+
+                    st.success(
+                        f"🔥 Animal! Protocolo gerado: **{codigo_auditoria}**. O arquivo foi renomeado e salvo na nuvem!")
+                    time.sleep(3)
+                    st.rerun()
                 except Exception as e:
-                    st.error(
-                        f"Erro no banco de dados (Verifique se a tabela 'registro_influencia_digital' existe). Detalhe: {e}")
+                    st.error(f"Erro ao salvar. Verifique se o Bucket 'comprovantes' existe no Supabase. Detalhe: {e}")
 
     # Histórico de aprovações
     st.markdown("---")
     st.subheader("📜 Seu Histórico de Disparos")
     try:
         resp_historico = supabase.table("registro_influencia_digital").select(
-            "data_referencia, link_postagem, views, alcance").eq("colaborador_id",
-                                                                 st.session_state["usuario_id"]).order("id",
-                                                                                                       ascending=False).limit(
+            "data_referencia, codigo_auditoria, views, alcance").eq("colaborador_id",
+                                                                    st.session_state["usuario_id"]).order("id",
+                                                                                                          ascending=False).limit(
             5).execute()
         if resp_historico.data:
             df_hist = pd.DataFrame(resp_historico.data)
-            df_hist.columns = ["Data Ref.", "Link do Post", "Views", "Alcance"]
+            df_hist.columns = ["Data Ref.", "Protocolo (Arquivo)", "Views", "Alcance"]
             st.dataframe(df_hist, use_container_width=True)
         else:
             st.info("Nenhuma postagem registrada ainda. Vá para as redes! 🦁")
@@ -331,7 +335,7 @@ def script_o_olho_da_leoa():
     ])
 
     with aba1: st.info("Gráficos Visuais")
-    
+
     with aba2:
         st.header("👑 Gamificação e Metas da Operação")
 
