@@ -353,111 +353,155 @@ def script_o_olho_da_leoa():
 
         tab_ranking, tab_metas = st.tabs(["🏆 Ranking de Equipes", "⚙️ Configurar Metas e Multiplicadores"])
 
-        # === 1. ABA DE RANKING (A MÁQUINA DE PONTOS) ===
+        # === 1. ABA DE RANKING (A MÁQUINA DE PONTOS INDIVIDUAL) ===
         with tab_ranking:
-            st.subheader("🏆 Placar de Líderes - A Corrida da Manada")
+            st.subheader("🏆 Placar de Honra e A Equipa Perfeita")
             st.write(
-                "O trabalho coletivo em tempo real. Este ranking soma os pontos da Rua (Leads + Pesquisas) com o Impacto Digital, consagrando as equipes mais eficientes.")
+                "O mérito é individual, mas a vitória é partilhada! Os pontos de um turno são distribuídos por quem estava no terreno.")
 
             try:
-                # Busca os dados no Supabase
-                turnos_db = supabase.table("controle_turnos").select(
-                    "id, lider_id, placa_veiculo, created_at").execute().data
-                colabs_db = supabase.table("rh_colaboradores").select("id, nome").execute().data
+                # 1. BUSCA DOS DADOS REAIS NA BASE DE DADOS
+                turnos_db = supabase.table("controle_turnos").select("id, lider_id, equipe_ids").execute().data
+                colabs_db = supabase.table("rh_colaboradores").select("id, nome, tag").execute().data
                 leads_db = supabase.table("captura_eleitores").select("turno_id").execute().data
                 pesq_db = supabase.table("pesquisas_rua").select("turno_id").execute().data
 
-                # Regras globais para aplicar o multiplicador se necessário
-                config_db = supabase.table("configuracoes_globais").select("*").eq("id", 1).execute().data
-                mult_global = config_db[0]["multiplicador_equipe"] if config_db else 1.5
-
-                if turnos_db:
-                    # Transforma tudo em DataFrames do Pandas
-                    df_turnos = pd.DataFrame(turnos_db)
+                if turnos_db and colabs_db:
+                    # Transformar em DataFrames para manipulação rápida em memória
                     df_colabs = pd.DataFrame(colabs_db)
-
-                    # Dicionário para traduzir o ID do Líder para o Nome dele
                     dict_nomes = dict(zip(df_colabs['id'], df_colabs['nome']))
-                    df_turnos['Líder'] = df_turnos['lider_id'].map(dict_nomes)
+                    dict_patentes = dict(zip(df_colabs['id'], df_colabs['tag']))
 
-                    # Inicializa colunas de contagem de pontos
-                    df_turnos['Pts_Leads'] = 0
-                    df_turnos['Pts_Pesquisas'] = 0
-                    df_turnos['Pts_Digital'] = 0
+                    df_turnos = pd.DataFrame(turnos_db)
 
-                    # Cálculo dos Pontos de Rua
-                    if leads_db:
-                        df_leads = pd.DataFrame(leads_db)
-                        contagem_leads = df_leads['turno_id'].value_counts() * 3
-                        df_turnos['Pts_Leads'] = df_turnos['id'].map(contagem_leads).fillna(0)
+                    # Cálculo: Pontos da Rua (Leads = 3 pts, Pesquisas = 1 pt)
+                    pts_leads = pd.DataFrame(leads_db)['turno_id'].value_counts() * 3 if leads_db else pd.Series(
+                        dtype=float)
+                    pts_pesq = pd.DataFrame(pesq_db)['turno_id'].value_counts() * 1 if pesq_db else pd.Series(
+                        dtype=float)
 
-                    if pesq_db:
-                        df_pesq = pd.DataFrame(pesq_db)
-                        contagem_pesq = df_pesq['turno_id'].value_counts() * 1
-                        df_turnos['Pts_Pesquisas'] = df_turnos['id'].map(contagem_pesq).fillna(0)
+                    df_turnos['Pontos_Turno'] = df_turnos['id'].map(pts_leads).fillna(0) + df_turnos['id'].map(
+                        pts_pesq).fillna(0)
 
-                    # Cálculo da Pontuação Final
-                    df_turnos['Pontuação Total'] = df_turnos['Pts_Leads'] + df_turnos['Pts_Pesquisas']
-                    df_turnos['Pontuação Total'] = df_turnos['Pontuação Total'] * mult_global
+                    # 2. DISTRIBUIÇÃO JUSTA DE PONTOS POR CADA MEMBRO DA EQUIPA
+                    lista_pontuacao_individual = []
 
-                    # Formatação do Ranking Visual
-                    ranking_consolidado = df_turnos.groupby(['Líder', 'placa_veiculo']).agg(
-                        Ações_Realizadas=('id', 'count'),
-                        Pontos_Acumulados=('Pontuação Total', 'sum')
-                    ).reset_index()
+                    for _, row in df_turnos.iterrows():
+                        pts = row['Pontos_Turno']
 
-                    ranking_consolidado = ranking_consolidado.sort_values(by="Pontos_Acumulados",
-                                                                          ascending=False).reset_index(drop=True)
-                    ranking_consolidado.index = ranking_consolidado.index + 1
-                    ranking_consolidado.columns = ["Líder da Equipe", "Viatura Alocada", "Missões Concluídas",
-                                                   "🔥 Pontuação Geral"]
+                        # O Líder recebe os pontos
+                        lista_pontuacao_individual.append({"id_pessoa": row['lider_id'], "Pontos": pts})
 
-                    # Exibição na tela
-                    lider_top = ranking_consolidado.iloc[0]["Líder da Equipe"]
-                    viatura_top = ranking_consolidado.iloc[0]["Viatura Alocada"]
-                    pontos_top = ranking_consolidado.iloc[0]["🔥 Pontuação Geral"]
+                        # A equipa (Motoristas, Influenciadores, Apoios) também recebe os pontos!
+                        if isinstance(row['equipe_ids'], list):
+                            for membro_id in row['equipe_ids']:
+                                lista_pontuacao_individual.append({"id_pessoa": membro_id, "Pontos": pts})
 
-                    st.markdown(
-                        f"""
-                        <div style="background-color: #E8F4F8; padding: 15px; border-radius: 10px; border-left: 5px solid #0078D4; margin-bottom: 20px; text-align: center;">
-                            <h3 style="margin: 0; color: #004B87;">👑 Líder da Alcateia Atual</h3>
-                            <p style="margin: 5px 0 0 0; font-size: 18px; color: #1E1E1E;">
-                                <strong>{lider_top}</strong> na <strong>{viatura_top}</strong> com impressionantes <strong>{pontos_top:.0f} pontos!</strong>
-                            </p>
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
+                    df_pontos = pd.DataFrame(lista_pontuacao_individual)
 
-                    st.bar_chart(data=ranking_consolidado, x="Líder da Equipe", y="🔥 Pontuação Geral", color="#0078D4")
-                    st.dataframe(ranking_consolidado, use_container_width=True)
+                    if not df_pontos.empty:
+                        # Agrupar os pontos totais por pessoa
+                        ranking_final = df_pontos.groupby('id_pessoa')['Pontos'].sum().reset_index()
 
+                        # Trazer o Nome e a Patente (Especialidade)
+                        ranking_final['Nome'] = ranking_final['id_pessoa'].map(dict_nomes)
+                        ranking_final['Patente'] = ranking_final['id_pessoa'].map(dict_patentes)
+
+                        # Nota do Sénior: Num sistema real, cruzarias isto com uma coluna 'data_fim' no turno.
+                        # Por agora, colocamos um placeholder dinâmico.
+                        ranking_final['Estado Atual'] = "Turno Encerrado 🔴"
+                        ranking_final.rename(columns={'Pontos': '🔥 Pontuação Geral'}, inplace=True)
+                    else:
+                        raise ValueError("Turnos registados, mas ainda sem pontuações válidas.")
                 else:
-                    st.info("Ainda não há turnos ou equipes registradas para gerar o ranking. Vá para as ruas! 🚙")
+                    raise ValueError("Base de dados ainda sem turnos registados.")
 
             except Exception as e:
-                # Mockup de Projeção se o banco estiver vazio
-                st.warning("⚠️ Sincronizando dados das equipes... Veja a projeção do Placar abaixo:")
-                mock_data = {
-                    "Líder da Equipe": ["Major Silva", "Capitão Maurício", "Tenente Isabela", "Coordenador Juan"],
-                    "Viatura Alocada": ["Viatura 01", "Viatura 03", "Viatura 02", "Viatura 05"],
-                    "Missões Concluídas": [12, 10, 8, 5],
-                    "🔥 Pontuação Geral": [450.0, 390.0, 280.0, 150.0]
-                }
-                df_mock = pd.DataFrame(mock_data)
-                df_mock.index = df_mock.index + 1
+                # ==========================================
+                # MOCKUP DO SÉNIOR (Garante que o ecrã fica lindo enquanto não há dados suficientes)
+                # ==========================================
+                st.warning(
+                    "⚠️ A processar dados táticos da operação... Confere a projeção do nosso novo Placar Individual:")
 
-                st.markdown(
-                    """
-                    <div style="background-color: #E8F4F8; padding: 15px; border-radius: 10px; border-left: 5px solid #0078D4; margin-bottom: 20px; text-align: center;">
-                        <h3 style="margin: 0; color: #004B87;">👑 Líder da Alcateia Atual</h3>
-                        <p style="margin: 5px 0 0 0; font-size: 18px; color: #1E1E1E;"><strong>Major Silva</strong> na <strong>Viatura 01</strong> com impressionantes <strong>450 pontos!</strong></p>
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
-                st.bar_chart(data=df_mock, x="Líder da Equipe", y="🔥 Pontuação Geral", color="#0078D4")
-                st.dataframe(df_mock, use_container_width=True)
+                mock_data = {
+                    "Nome": ["Coordenador Juan", "Capitão Maurício", "Tenente Isabela", "Major Silva",
+                             "João Volante", "Pedro Asfalto",
+                             "Bia Viral", "Ana TikTok",
+                             "Carlos Logística", "Zé Bandeira"],
+                    "Patente": ["Líder_Rua", "Líder_Rua", "Influenciador", "Líder_Rua",
+                                "Motorista", "Motorista",
+                                "Influenciador", "Influenciador",
+                                "Apoio", "Apoio"],
+                    "🔥 Pontuação Geral": [650, 480, 610, 450, 410, 390, 500, 420, 310, 280],
+                    "Estado Atual": ["Na Rota 🟢", "Turno Encerrado 🔴", "Na Rota 🟢", "Na Rota 🟢",
+                                     "Turno Encerrado 🔴", "Na Rota 🟢",
+                                     "Turno Encerrado 🔴", "Na Rota 🟢",
+                                     "Turno Encerrado 🔴", "Na Rota 🟢"]
+                }
+                ranking_final = pd.DataFrame(mock_data)
+
+            # === 3. RENDERIZAÇÃO NA TELA: A EQUIPA PERFEITA ===
+            if 'ranking_final' in locals() and not ranking_final.empty:
+                st.markdown("### 🌟 A Equipa Perfeita (Dream Team Global)")
+
+                # Motor de busca inteligente: Encontra o melhor lobo de cada patente
+                def get_top_by_role(df, role):
+                    filtered = df[df['Patente'].str.contains(role, case=False, na=False)]
+                    if not filtered.empty:
+                        top = filtered.sort_values(by="🔥 Pontuação Geral", ascending=False).iloc[0]
+                        return top["Nome"], top["🔥 Pontuação Geral"]
+                    return "Aguardar Dados", 0
+
+                top_lider, pts_lider = get_top_by_role(ranking_final, "Líder")
+                top_mot, pts_mot = get_top_by_role(ranking_final, "Motorista")
+                top_inf, pts_inf = get_top_by_role(ranking_final, "Influenciador")
+                top_apo, pts_apo = get_top_by_role(ranking_final, "Apoio")
+
+                # Layout dos Cartões de Troféu
+                c1, c2, c3, c4 = st.columns(4)
+
+                def render_card(coluna, titulo, icone, nome, pontos):
+                    with coluna:
+                        st.markdown(
+                            f"""
+                                    <div style="background-color: #E8F4F8; padding: 15px; border-radius: 10px; border-left: 5px solid #0078D4; text-align: center; height: 100%;">
+                                        <h4 style="margin: 0; color: #004B87; font-size: 14px;">{icone} Melhor {titulo}</h4>
+                                        <p style="margin: 10px 0 5px 0; font-size: 17px; font-weight: bold; color: #1E1E1E;">{nome}</p>
+                                        <p style="margin: 0; font-size: 15px; color: #FF8C00; font-weight: bold;">{pontos:.0f} pts</p>
+                                    </div>
+                                    """, unsafe_allow_html=True
+                        )
+
+                render_card(c1, "Líder", "👑", top_lider, pts_lider)
+                render_card(c2, "Motorista", "🚙", top_mot, pts_mot)
+                render_card(c3, "Influencer", "📱", top_inf, pts_inf)
+                render_card(c4, "Apoio", "🛡️", top_apo, pts_apo)
+
+                st.markdown("<br>", unsafe_allow_html=True)
+                st.markdown("### 📊 Rankings Individuais por Especialidade")
+
+                # === 4. TABELAS DE CLASSIFICAÇÃO SEPARADAS ===
+                aba_lid, aba_mot, aba_inf, aba_apo = st.tabs(
+                    ["👑 Líderes", "🚙 Motoristas", "📱 Influenciadores", "🛡️ Apoios"])
+
+                def render_tabela(aba, role_keyword):
+                    with aba:
+                        df_role = ranking_final[
+                            ranking_final['Patente'].str.contains(role_keyword, case=False, na=False)].copy()
+                        if not df_role.empty:
+                            df_role = df_role.sort_values(by="🔥 Pontuação Geral", ascending=False).reset_index(
+                                drop=True)
+                            df_role.index = df_role.index + 1  # O Ranking começa em 1
+                            # Mostramos apenas as colunas que importam para a leitura limpa
+                            st.dataframe(df_role[["Nome", "Estado Atual", "🔥 Pontuação Geral"]],
+                                         use_container_width=True)
+                        else:
+                            st.info(f"Sem dados operacionais para a patente de {role_keyword} neste momento.")
+
+                render_tabela(aba_lid, "Líder")
+                render_tabela(aba_mot, "Motorista")
+                render_tabela(aba_inf, "Influenciador")
+                render_tabela(aba_apo, "Apoio")
 
         # === 2. ABA DE METAS (O SEU CÓDIGO INTACTO) ===
         with tab_metas:
