@@ -216,7 +216,83 @@ def script_manada_de_leao():
 # --- Script 2: A Selva ---
 def script_a_selva():
     st.header("🌿 A Selva - Radar de Influência")
-    st.write("Módulo em construção...")
+    st.write(f"Influenciador(a): **{st.session_state['nome_usuario']}**")
+    st.markdown("---")
+
+    # Layout em colunas para os principais números do dia dele
+    st.subheader("📊 Seu Painel de Impacto")
+
+    # Vamos criar duas métricas visuais bonitas na tela
+    col_m1, col_m2 = st.columns(2)
+    with col_m1:
+        st.metric(label="🎯 Meta Diária de Adesivaço", value="150", delta="Falta pouco!")
+    with col_m2:
+        st.metric(label="⚡ Multiplicador de Pontos", value="1.5x", delta="Ativo no Turno")
+
+    st.markdown("---")
+    st.subheader("🚀 Reportar Ação de Panfletagem e Adesivaço")
+    st.write("Dica: Faça este reporte a cada esquina preenchida ou ao mudar de ponto de parada.")
+
+    # Formulário rápido e otimizado para celular (onde o influenciador costuma usar)
+    with st.form("form_reporte_influencia", clear_on_submit=True):
+        col_inf1, col_inf2 = st.columns(2)
+        with col_inf1:
+            qtd_adesivos = st.number_input("Quantos ADESIVOS colou nesse ponto?", min_value=0, step=5,
+                                           help="Cada adesivo colado garante +1 ponto.")
+        with col_inf2:
+            qtd_panfletos = st.number_input("Quantos PANFLETOS entregou em mãos?", min_value=0, step=10)
+
+        local_referencia = st.text_input("Local de Referência / Ponto Comercial",
+                                         placeholder="Ex: Em frente à Padaria Central, Semáforo da Quadra 4")
+        observacao = st.text_area("Algum feedback da recepção do povo? (Opcional)",
+                                  placeholder="Ex: Povo muito receptivo, aceitaram bem o material.")
+
+        btn_enviar_impacto = st.form_submit_button("🔥 Registrar Impacto na Selva (+Pontos)")
+
+        if btn_enviar_impacto:
+            if qtd_adesivos == 0 and qtd_panfletos == 0:
+                st.error("🛑 Você precisa reportar pelo menos algum material entregue ou colado!")
+            elif not local_referencia.strip():
+                st.warning("⚠️ Informe o local onde você realizou essa ação para a coordenação acompanhar no mapa.")
+            else:
+                try:
+                    # Registrando a produtividade do influenciador no Supabase
+                    supabase.table("registro_influenciadores").insert({
+                        "colaborador_id": st.session_state["usuario_id"],
+                        "data_registro": str(date.today()),
+                        "adesivos_colados": qtd_adesivos,
+                        "panfletos_entregues": qtd_panfletos,
+                        "local_referencia": local_referencia.strip(),
+                        "observacoes": observacao.strip()
+                    }).execute()
+
+                    st.success("💪 Excelente trabalho, Leão! Seu impacto foi registrado e seus pontos foram computados.")
+                    time.sleep(1.5)
+                    st.rerun()
+                except Exception as e:
+                    # Se a tabela ainda não existir no seu banco, o sistema vai avisar aqui sem travar a tela branca
+                    st.error(
+                        f"Erro ao salvar no banco. Verifique se a tabela 'registro_influenciadores' existe. Detalhe: {e}")
+
+    # --- HISTÓRICO RECENTE DO INFLUENCIADOR ---
+    st.markdown("---")
+    st.subheader("📜 Seus Últimos Reportes de Hoje")
+    try:
+        resp_historico = supabase.table("registro_influenciadores") \
+            .select("created_at, local_referencia, adesivos_colados, panfletos_entregues") \
+            .eq("colaborador_id", st.session_state["usuario_id"]) \
+            .order("created_at", ascending=False) \
+            .limit(5).execute()
+
+        if resp_historico.data:
+            df_hist = pd.DataFrame(resp_historico.data)
+            # Organiza as colunas para exibição rápida
+            df_hist.columns = ["Horário", "Local", "Adesivos", "Panfletos"]
+            st.dataframe(df_hist, use_container_width=True)
+        else:
+            st.info("Você ainda não fez nenhum reporte hoje. Vá para cima deles! 🦁")
+    except Exception:
+        pass
 
 # --- Script 3: O Olho da Leoa (Sala de Guerra) ---
 def script_o_olho_da_leoa():
