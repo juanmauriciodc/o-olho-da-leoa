@@ -234,7 +234,9 @@ def script_o_olho_da_leoa():
 
     with aba4:
         st.header("🐾 Controle da Manada (Despacho)")
-        tab_rotas, tab_candidatos = st.tabs(["📍 Territórios de Caça", "🦁 Realeza"])
+
+        # --- ADICIONAMOS A ABA DA ALCATEIA (RH) AQUI ---
+        tab_rotas, tab_candidatos, tab_rh = st.tabs(["📍 Territórios de Caça", "🦁 Realeza", "🐺 Alcateia (RH)"])
 
         with tab_rotas:
             st.subheader("Mapear Novo Território (Alocar Rota para Viatura)")
@@ -265,7 +267,71 @@ def script_o_olho_da_leoa():
                     st.dataframe(df_rotas[["viatura_alocada", "nome_rota", "regiao", "bairro_alvo"]], use_container_width=True)
             except: pass
 
-        with tab_candidatos: st.info("Cadastro de candidatos")
+        with tab_candidatos:
+            st.subheader("Adicionar Nome à Realeza (Radar de Pesquisas)")
+            with st.form("form_candidatos", clear_on_submit=True):
+                nome_cand = st.text_input("Nome do Candidato ou Partido")
+                if st.form_submit_button("Registrar no Sistema"):
+                    if nome_cand:
+                        try:
+                            supabase.table("candidatos").insert({"nome": nome_cand.strip(), "ativo": True}).execute()
+                            st.success(f"✅ {nome_cand} adicionado ao radar dos líderes de rua!")
+                        except Exception as e:
+                            st.error(f"Erro ao adicionar candidato: {e}")
+                    else:
+                        st.warning("⚠️ Digite um nome válido.")
+
+            st.markdown("---")
+            st.subheader("🦁 Realeza Atual (Candidatos Ativos na Rua)")
+            try:
+                resp_cand = supabase.table("candidatos").select("*").eq("ativo", True).execute()
+                if resp_cand.data:
+                    for c in resp_cand.data:
+                        st.write(f"▪️ **{c['nome']}**")
+                else:
+                    st.info("Nenhum candidato cadastrado no momento.")
+            except:
+                pass
+
+        # --- NOVO MÓDULO: ALCATEIA (RH) ---
+        with tab_rh:
+            st.subheader("Recrutar Novo Membro para a Alcateia")
+            with st.form("form_rh", clear_on_submit=True):
+                col_n, col_t = st.columns(2)
+                with col_n:
+                    nome_colab = st.text_input("Nome Completo / Apelido")
+                    telefone_colab = st.text_input("Telefone (WhatsApp)")
+                with col_t:
+                    tag_colab = st.selectbox("Patente (Função)", ["Motorista", "Influenciador", "Apoio", "Coordenacao"])
+
+                if st.form_submit_button("Cadastrar Membro"):
+                    if nome_colab:
+                        try:
+                            supabase.table("rh_colaboradores").insert({
+                                "nome": nome_colab.strip(),
+                                "tag": tag_colab,
+                                "telefone": telefone_colab.strip(),
+                                "ativo": True
+                            }).execute()
+                            st.success(f"✅ {nome_colab} foi convocado(a) como {tag_colab} e já pode logar no sistema!")
+                        except Exception as e:
+                            st.error(f"Erro ao cadastrar membro: {e}")
+                    else:
+                        st.warning("⚠️ O nome do colaborador é obrigatório.")
+
+            st.markdown("---")
+            st.subheader("🐺 Alcateia Atual (Membros Ativos)")
+            try:
+                resp_colab_list = supabase.table("rh_colaboradores").select("nome, tag, telefone").eq("ativo", True).execute()
+                if resp_colab_list.data:
+                    df_rh = pd.DataFrame(resp_colab_list.data)
+                    # Renomeia as colunas para ficar visualmente bonito
+                    df_rh.columns = ["Nome", "Patente (Tag)", "Telefone"]
+                    st.dataframe(df_rh, use_container_width=True)
+                else:
+                    st.info("Nenhum membro cadastrado ainda.")
+            except Exception as e:
+                pass
 
     # --- ABA DE RELATÓRIOS E RH (TERMOS BLINDADOS) ---
     with aba5:
