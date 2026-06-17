@@ -230,7 +230,7 @@ def script_o_olho_da_leoa():
     st.markdown("---")
 
     aba1, aba2, aba3, aba4, aba5 = st.tabs([
-        "👁️ Visão", "👑 Gamificação", "🔎 O Covil", "🐾 Despacho", "💰 O Tesouro (RH e Pagamentos)"
+        "👁️ Visão", "👑 Gamificação", "🔎 O Covil", "🐾 Despacho", "💰 O Tesouro (RH e AC)"
     ])
 
     with aba1: st.info("Gráficos Visuais")
