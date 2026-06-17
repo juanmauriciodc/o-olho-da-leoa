@@ -75,7 +75,6 @@ def script_manada_de_leao():
         with st.form("form_abertura_turno"):
             col_v, col_t = st.columns(2)
             with col_v:
-                # O LÍDER DIZ QUAL GAVETA DE ROTA ELE VAI OLHAR
                 viatura_selecionada = st.selectbox("Qual Viatura você está assumindo?", [f"Viatura {str(i).zfill(2)}" for i in range(1, 11)])
                 placa = st.text_input("Placa do Veículo (Opcional)", placeholder="ABC-1234")
             with col_t:
@@ -103,19 +102,16 @@ def script_manada_de_leao():
                     try:
                         equipe_ids = [motoristas[n] for n in sel_mot] + [influenciadores[n] for n in sel_inf] + [apoios[n] for n in sel_apo]
 
-                        # 1. Cria o Turno do Carro
                         res_turno = supabase.table("controle_turnos").insert({
                             "lider_id": st.session_state["usuario_id"], "placa_veiculo": placa, "equipe_ids": equipe_ids
                         }).execute()
                         novo_turno_id = res_turno.data[0]["id"]
 
-                        # 2. BATE O PONTO AUTOMÁTICO NA TABELA NOVA
                         lista_ponto = [{"colaborador_id": st.session_state["usuario_id"], "data_trabalho": str(date.today()), "turno_trabalho": turno_trabalho, "setor": "Rua"}]
                         for colab_id in equipe_ids:
                             lista_ponto.append({"colaborador_id": colab_id, "data_trabalho": str(date.today()), "turno_trabalho": turno_trabalho, "setor": "Rua"})
                         supabase.table("controle_ponto").insert(lista_ponto).execute()
 
-                        # 3. Salva Materiais
                         materiais = [
                             {"turno_id": novo_turno_id, "material_nome": "Panfletos", "qtd_embarcada": panfletos, "qtd_sobra": 0},
                             {"turno_id": novo_turno_id, "material_nome": "Adesivos", "qtd_embarcada": adesivos, "qtd_sobra": 0},
@@ -134,7 +130,6 @@ def script_manada_de_leao():
         st.success(f"🟢 {st.session_state['viatura_atual']} na rua! Turno #{st.session_state['turno_id_atual']}")
 
         try:
-            # O SEGREDO ESTÁ AQUI: Só puxa a rota que foi destinada para a viatura dele!
             resp_rotas = supabase.table("planejamento_rotas").select("*").eq("status", "Pendente").eq("viatura_alocada", st.session_state["viatura_atual"]).order("id").limit(1).execute()
             rota_atual = resp_rotas.data[0] if len(resp_rotas.data) > 0 else None
             rota_id_db = rota_atual["id"] if rota_atual else None
@@ -230,7 +225,7 @@ def script_o_olho_da_leoa():
     st.markdown("---")
 
     aba1, aba2, aba3, aba4, aba5 = st.tabs([
-        "👁️ Visão", "👑 Gamificação", "🔎 O Covil", "🐾 Despacho", "💰 O Tesouro (RH e AC)"
+        "👁️ Visão", "👑 Gamificação", "🔎 O Covil", "🐾 Despacho", "💰 O Tesouro (Controle de Turnos e AC)"
     ])
 
     with aba1: st.info("Gráficos Visuais")
@@ -250,7 +245,6 @@ def script_o_olho_da_leoa():
                     regiao = st.selectbox("Macrorregião", ["Plano Piloto", "Asa Norte", "Asa Sul", "Taguatinga", "Ceilândia", "Gama", "Águas Claras", "Outras"])
                 with col2:
                     bairro_alvo = st.text_input("Bairro / Ponto")
-                    # NOVO: O DESPACHANTE ESCOLHE QUAL CARRO VAI FAZER A ROTA
                     viatura_alocada = st.selectbox("Qual carro fará esta rota?", [f"Viatura {str(i).zfill(2)}" for i in range(1, 11)])
 
                 descricao = st.text_area("Instruções da Missão")
@@ -273,10 +267,10 @@ def script_o_olho_da_leoa():
 
         with tab_candidatos: st.info("Cadastro de candidatos")
 
-    # --- A NOVA ABA DE RELATÓRIOS E RH ---
+    # --- ABA DE RELATÓRIOS E RH (TERMOS BLINDADOS) ---
     with aba5:
         st.header("💰 O Tesouro da Leoa (Controle de Ponto e AC)")
-        tab_qg, tab_relatorio = st.tabs(["🏢 Bater Ponto Manual (Equipe QG)", "📊 Relatório de Fechamento (Folha)"])
+        tab_qg, tab_relatorio = st.tabs(["🏢 Bater Ponto Manual (Equipe QG)", "📊 Extrato de Fechamento (AC)"])
 
         with tab_qg:
             st.subheader("Registrar Presença - Base Interna")
@@ -303,11 +297,10 @@ def script_o_olho_da_leoa():
                     except Exception as e: st.error(f"Erro: {e}")
 
         with tab_relatorio:
-            st.subheader("Relatório Sintético de Turnos (Rua + QG)")
-            st.write("Este painel resume quantos dias e quantos turnos cada pessoa trabalhou, independentemente da equipe que ela estava.")
-            if st.button("🔄 Gerar Relatório de Fechamento"):
+            st.subheader("Relatório Sintético de Turnos (Base para Liberação de AC)")
+            st.write("Este painel resume quantos dias e quantos turnos cada pessoa trabalhou, fornecendo a métrica exata para a consolidação das Ajudas de Custo.")
+            if st.button("🔄 Gerar Extrato de AC"):
                 try:
-                    # Cruza os dados do Ponto com os Nomes do RH via Pandas para gerar um extrato perfeito
                     resp_ponto = supabase.table("controle_ponto").select("*").execute()
                     resp_rh = supabase.table("rh_colaboradores").select("id, nome, tag").execute()
 
@@ -317,7 +310,6 @@ def script_o_olho_da_leoa():
 
                         df_merged = df_ponto.merge(df_rh, left_on='colaborador_id', right_on='id')
 
-                        # A mágica do Pandas: agrupa pelo nome e conta turnos e dias únicos
                         resumo = df_merged.groupby(['nome', 'tag']).agg(
                             Dias_Trabalhados=('data_trabalho', 'nunique'),
                             Total_de_Turnos=('turno_trabalho', 'count')
@@ -327,7 +319,7 @@ def script_o_olho_da_leoa():
                     else:
                         st.warning("Ainda não há registros de ponto no sistema.")
                 except Exception as e:
-                    st.error(f"Erro ao compilar o relatório: {e}")
+                    st.error(f"Erro ao compilar o extrato: {e}")
 
 # --- 6. Roteamento Principal ---
 if not st.session_state["logado"]: tela_login()
