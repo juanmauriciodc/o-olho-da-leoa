@@ -417,23 +417,24 @@ def script_a_selva():
                 except Exception as e:
                     st.error(f"Erro no processamento. Detalhe: {e}")
 
-    # Histórico de aprovações
-    st.markdown("---")
-    st.subheader("📜 Seu Histórico de Disparos")
-    try:
-        resp_historico = supabase.table("registro_influencia_digital").select(
-            "data_referencia, codigo_auditoria, views, alcance").eq("colaborador_id",
-                                                                    st.session_state["usuario_id"]).order("id",
-                                                                                                          ascending=False).limit(
-            5).execute()
-        if resp_historico.data:
-            df_hist = pd.DataFrame(resp_historico.data)
-            df_hist.columns = ["Data Ref.", "Protocolo (Arquivo)", "Views", "Alcance"]
-            st.dataframe(df_hist, use_container_width=True)
-        else:
-            st.info("Nenhuma postagem registada ainda. Vá para as redes! 🦁")
-    except:
-        pass
+        # Histórico de aprovações
+        st.markdown("---")
+        st.subheader("📜 Seu Histórico de Disparos")
+        try:
+            resp_historico = supabase.table("registro_influencia_digital").select(
+                "data_referencia, codigo_auditoria, views, alcance"
+            ).eq("colaborador_id", st.session_state["usuario_id"]).order(
+                "id", desc=True
+            ).limit(5).execute()
+
+            if resp_historico.data:
+                df_hist = pd.DataFrame(resp_historico.data)
+                df_hist.columns = ["Data Ref.", "Protocolo (Arquivo)", "Views", "Alcance"]
+                st.dataframe(df_hist, use_container_width=True)
+            else:
+                st.info("Nenhuma postagem registada ainda. Vá para as redes! 🦁")
+        except:
+            pass
 
 # --- Script 3: O Olho da Leoa (Sala de Guerra) ---
 def script_o_olho_da_leoa():
@@ -754,7 +755,7 @@ def script_o_olho_da_leoa():
 
         try:
             # Busca todos os feedbacks registrados
-            resp_feedback = supabase.table("canal_feedback").select("*").order("created_at", ascending=False).execute()
+            resp_feedback = supabase.table("canal_feedback").select("*").order("created_at", desc=True).execute()
 
             if resp_feedback.data:
                 df_feed = pd.DataFrame(resp_feedback.data)
