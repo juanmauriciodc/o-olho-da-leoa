@@ -221,8 +221,18 @@ def script_a_selva():
     st.write(f"Influenciador(a) Atirador(a): **{st.session_state['nome_usuario']}**")
     st.markdown("---")
 
-    st.info(
-        "💡 **Otimização Ativa:** Todos os prints enviados são automaticamente comprimidos pelo sistema para poupar espaço, mantendo a máxima nitidez para auditoria.")
+    # === NOVO QUADRO DE REGRAS E PONTOS (UX ACELERADA) ===
+    st.markdown(
+        """
+        <div style="background-color: #1E1E1E; padding: 15px; border-radius: 10px; border-left: 5px solid #FFD700; margin-bottom: 20px;">
+            <h4 style="margin-top: 0; color: #FFD700;">🏆 Regras da Alcateia & Pontuação Digital</h4>
+            <p style="margin-bottom: 8px;"><strong>👥 Força Coletiva:</strong> O trabalho aqui é 100% em equipe! Os pontos gerados pelas suas visualizações e alcance não vão só para você; eles são <strong>distribuídos no exato momento para toda a equipe</strong> que operou no mesmo dia e turno.</p>
+            <p style="margin-bottom: 8px;"><strong>📸 Validação Única:</strong> Faça o registro assim que a postagem atingir o maior alcance possível. Só é permitido um upload por ação, que servirá como prova auditada pela coordenação.</p>
+            <p style="margin-bottom: 0;"><strong>⚡ Multiplicador Global:</strong> Mantenha a sintonia com os líderes de rua! Se a sua equipe bater as metas combinadas de material físico e engajamento digital, todos recebem o bônus do multiplicador configurado pelo QG.</p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
     # Formulário de Registro de Engajamento
     with st.form("form_reporte_digital", clear_on_submit=True):
