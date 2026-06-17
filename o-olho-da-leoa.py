@@ -275,7 +275,7 @@ def script_o_olho_da_leoa():
 
     # --- A NOVA ABA DE RELATÓRIOS E RH ---
     with aba5:
-        st.header("💰 O Tesouro da Leoa (Controle de Ponto e Pagamentos)")
+        st.header("💰 O Tesouro da Leoa (Controle de Ponto e AC)")
         tab_qg, tab_relatorio = st.tabs(["🏢 Bater Ponto Manual (Equipe QG)", "📊 Relatório de Fechamento (Folha)"])
 
         with tab_qg:
