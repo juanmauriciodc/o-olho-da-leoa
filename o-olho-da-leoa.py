@@ -134,7 +134,7 @@ def script_manada_de_leao():
         try:
             resp_rotas = supabase.table("planejamento_rotas").select("*").eq("status", "Pendente").order("id").limit(1).execute()
             rota_atual = resp_rotas.data[0] if len(resp_rotas.data) > 0 else None
-            rota_id_db = rota_atual["id"] if rota_atual else None  # A INTELIGÊNCIA INVISÍVEL AQUI
+            rota_id_db = rota_atual["id"] if rota_atual else None
         except Exception:
             rota_atual = None
             rota_id_db = None
@@ -160,7 +160,7 @@ def script_manada_de_leao():
                     try:
                         supabase.table("captura_eleitores").insert({
                             "turno_id": st.session_state["turno_id_atual"],
-                            "rota_id": rota_id_db,  # O CARIMBO DA ROTA
+                            "rota_id": rota_id_db,
                             "nome_eleitor": nome_eleitor.strip(),
                             "whatsapp": zap_eleitor.strip(),
                             "bairro": bairro_eleitor.strip()
@@ -189,7 +189,7 @@ def script_manada_de_leao():
                     try:
                         supabase.table("pesquisas_rua").insert({
                             "turno_id": st.session_state["turno_id_atual"],
-                            "rota_id": rota_id_db,  # O CARIMBO DA ROTA
+                            "rota_id": rota_id_db,
                             "nome_eleitor": nome_eleitor_pesq.strip(),
                             "intencao_voto": candidato_escolhido
                         }).execute()
@@ -270,7 +270,6 @@ def script_o_olho_da_leoa():
     st.write("A central de inteligência e controle de toda a operação.")
     st.markdown("---")
 
-    # O Sistema de Abas Inteligentes e Temáticas
     aba1, aba2, aba3, aba4 = st.tabs([
         "👁️ Visão da Leoa",
         "👑 Reis da Selva",
@@ -280,8 +279,7 @@ def script_o_olho_da_leoa():
 
     with aba1:
         st.header("👁️ Visão da Leoa")
-        st.info(
-            "Aqui entrarão os gráficos de Índice de Aceitação, Leads por Local, Pesquisas por Região e Controle de Materiais.")
+        st.info("Aqui entrarão os gráficos de Índice de Aceitação, Leads por Local, Pesquisas por Região e Controle de Materiais.")
 
     with aba2:
         st.header("👑 Reis da Selva")
@@ -295,7 +293,6 @@ def script_o_olho_da_leoa():
         st.header("🐾 Controle da Manada")
         st.write("Gerencie os territórios de atuação e o radar da operação.")
 
-        # Sub-abas para organizar o painel de controle
         tab_rotas, tab_candidatos = st.tabs(["📍 Territórios de Caça (Rotas)", "🦁 Realeza (Candidatos)"])
 
         with tab_rotas:
@@ -304,13 +301,12 @@ def script_o_olho_da_leoa():
                 col1, col2 = st.columns(2)
                 with col1:
                     nome_rota = st.text_input("Nome da Operação (Ex: Invasão UnB)")
-                    # Aqui a regiao que você pediu entra em ação!
                     regiao = st.selectbox("Macrorregião",
                                           ["Plano Piloto", "Asa Norte", "Asa Sul", "Taguatinga", "Ceilândia", "Gama",
                                            "Águas Claras", "Outras"])
                 with col2:
                     bairro_alvo = st.text_input("Bairro / Ponto Específico")
-                    status_inicial = st.selectbox("Status", ["Pendente"])  # O sistema força a ser pendente
+                    status_inicial = st.selectbox("Status", ["Pendente"])
 
                 descricao = st.text_area("Instruções da Missão (Visível para o Líder no carro)")
 
@@ -333,11 +329,9 @@ def script_o_olho_da_leoa():
             st.markdown("---")
             st.subheader("🗺️ Territórios Atuais (Fila de Espera)")
             try:
-                # O C3 consegue ver quais rotas ainda não foram feitas
                 resp_rotas = supabase.table("planejamento_rotas").select("*").eq("status", "Pendente").execute()
                 if resp_rotas.data:
                     df_rotas = pd.DataFrame(resp_rotas.data)
-                    # Exibe uma tabela bonita escondendo os IDs técnicos
                     st.dataframe(df_rotas[["nome_rota", "regiao", "bairro_alvo", "descricao"]],
                                  use_container_width=True)
                 else:
@@ -370,3 +364,14 @@ def script_o_olho_da_leoa():
                     st.info("Nenhum candidato cadastrado no momento.")
             except:
                 pass
+
+# --- 6. Roteamento Principal (O Guarda de Trânsito) ---
+if not st.session_state["logado"]:
+    tela_login()
+else:
+    if st.session_state["perfil"] == "Lider_Rua":
+        script_manada_de_leao()
+    elif st.session_state["perfil"] == "Influenciador":
+        script_a_selva()
+    elif st.session_state["perfil"] == "Coordenacao":
+        script_o_olho_da_leoa()
