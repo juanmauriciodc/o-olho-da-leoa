@@ -235,7 +235,7 @@ def script_o_olho_da_leoa():
     with aba4:
         st.header("🐾 Controle da Manada (Despacho)")
 
-        # --- ADICIONAMOS A ABA DA ALCATEIA (RH) AQUI ---
+        # --- Sub-abas principais do despacho ---
         tab_rotas, tab_candidatos, tab_rh = st.tabs(["📍 Territórios de Caça", "🦁 Realeza", "🐺 Alcateia (RH)"])
 
         with tab_rotas:
@@ -293,11 +293,10 @@ def script_o_olho_da_leoa():
             except:
                 pass
 
-        # === OLHA O ALINHAMENTO AQUI, MEU DEV! (Mesma reta do with tab_candidatos) ===
+        # --- MÓDULO ALCATEIA (RH) PERFEITAMENTE ALINHADO ---
         with tab_rh:
             st.subheader("🐺 Gerenciamento da Alcateia (RH)")
 
-            # 1. Puxar todos os colaboradores ativos para preencher as opções de Edição e Remoção
             try:
                 resp_colab_list = supabase.table("rh_colaboradores").select("id, nome, tag, telefone, ativo").eq("ativo", True).order("nome").execute()
                 colaboradores = resp_colab_list.data
@@ -306,10 +305,8 @@ def script_o_olho_da_leoa():
                 colaboradores = []
                 opcoes_rh = {}
 
-            # Sub-abas para organizar as ações do RH
             aba_cadastrar, aba_editar, aba_inativar = st.tabs(["➕ Recrutar", "✏️ Editar Perfil", "❌ Inativar Membro"])
 
-            # --- AÇÃO: CADASTRAR ---
             with aba_cadastrar:
                 with st.form("form_rh_cadastrar", clear_on_submit=True):
                     col_n, col_t = st.columns(2)
@@ -330,13 +327,12 @@ def script_o_olho_da_leoa():
                                 }).execute()
                                 st.success(f"✅ {nome_colab} foi convocado(a) como {tag_colab} e já pode logar no sistema!")
                                 time.sleep(1)
-                                st.rerun()  # Atualiza a página para mostrar na tabela
+                                st.rerun()
                             except Exception as e:
                                 st.error(f"Erro ao cadastrar membro: {e}")
                         else:
                             st.warning("⚠️ O nome do colaborador é obrigatório.")
 
-            # --- AÇÃO: EDITAR ---
             with aba_editar:
                 if opcoes_rh:
                     nome_selecionado = st.selectbox("Selecione o membro para editar:", options=list(opcoes_rh.keys()), key="sel_edita")
@@ -367,7 +363,6 @@ def script_o_olho_da_leoa():
                 else:
                     st.info("Nenhum membro ativo para editar.")
 
-            # --- AÇÃO: INATIVAR ---
             with aba_inativar:
                 if opcoes_rh:
                     nome_inativar = st.selectbox("Selecione o membro para afastar/inativar:", options=list(opcoes_rh.keys()), key="sel_inativa")
@@ -399,7 +394,7 @@ def script_o_olho_da_leoa():
             except Exception as e:
                 pass
 
-    # --- ABA DE RELATÓRIOS E RH (TERMOS BLINDADOS) ---
+    # --- ABA 5: O TESOURO DA LEOA ---
     with aba5:
         st.header("💰 O Tesouro da Leoa (Controle de Ponto e AC)")
         tab_qg, tab_relatorio = st.tabs(["🏢 Bater Ponto Manual (Equipe QG)", "📊 Extrato de Fechamento (AC)"])
@@ -452,3 +447,14 @@ def script_o_olho_da_leoa():
                         st.warning("Ainda não há registros de ponto no sistema.")
                 except Exception as e:
                     st.error(f"Erro ao compilar o extrato: {e}")
+
+# --- 6. Roteamento Principal (O MOTOR QUE ESTAVA FALTANDO) ---
+if not st.session_state["logado"]:
+    tela_login()
+else:
+    if st.session_state["perfil"] == "Lider_Rua":
+        script_manada_de_leao()
+    elif st.session_state["perfil"] == "Influenciador":
+        script_a_selva()
+    elif st.session_state["perfil"] == "Coordenacao":
+        script_o_olho_da_leoa()
