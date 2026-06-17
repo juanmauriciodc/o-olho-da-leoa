@@ -177,34 +177,37 @@ def script_manada_de_leao():
         # --- MÓDULO 2: SENSO DA RUA ---
         st.subheader("📊 2. Senso da Rua (Pesquisa Rápida)")
 
-        # O sistema tenta buscar os candidatos ativos no banco de dados
         try:
             resp_cand = supabase.table("candidatos").select("nome").eq("ativo", True).execute()
             nomes_candidatos = [c["nome"] for c in resp_cand.data]
         except Exception:
-            nomes_candidatos = []  # Se der erro ou a tabela estiver vazia, não quebra o app
+            nomes_candidatos = []
 
-        # Monta a lista final (Selecione + Candidatos do Banco + Opções Padrão de escape)
         opcoes_voto = ["Selecione..."] + nomes_candidatos + ["Outros Oponentes", "Branco / Nulo", "Indeciso / Não sabe"]
 
         with st.form("form_pesquisa", clear_on_submit=True):
+            nome_eleitor_pesq = st.text_input("Nome do Eleitor (Obrigatório para validar a pesquisa)")
             candidato_escolhido = st.selectbox(
                 "Intenção de Voto (Espontânea/Estimulada):",
                 opcoes_voto
             )
 
             if st.form_submit_button("Registrar Voto (+1 Ponto)"):
-                if candidato_escolhido != "Selecione...":
+                # A nova trava antifraude entra aqui:
+                if not nome_eleitor_pesq.strip():
+                    st.error("🛑 Trava de Segurança: É obrigatório informar o nome do eleitor!")
+                elif candidato_escolhido == "Selecione...":
+                    st.warning("⚠️ Selecione uma intenção de voto válida.")
+                else:
                     try:
                         supabase.table("pesquisas_rua").insert({
                             "turno_id": st.session_state["turno_id_atual"],
+                            "nome_eleitor": nome_eleitor_pesq.strip(),
                             "intencao_voto": candidato_escolhido
                         }).execute()
-                        st.toast("✅ Voto computado no radar!")
+                        st.toast("✅ Voto validado e computado no radar!")
                     except Exception as e:
-                        st.error("Erro ao salvar pesquisa.")
-                else:
-                    st.warning("⚠️ Selecione uma opção válida.")
+                        st.error(f"Erro ao salvar pesquisa: {e}")
 
         st.markdown("---")
 
