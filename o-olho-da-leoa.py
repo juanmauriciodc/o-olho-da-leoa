@@ -278,6 +278,76 @@ def script_manada_de_leao():
             st.session_state["turno_id_atual"] = None
             st.rerun()
 
+# --- Script 2: A Selva (Radar de Influência) ---
+def script_a_selva():
+    st.header("🌿 A Selva - Radar de Influência")
+    st.write(f"Influenciador: **{st.session_state['nome_usuario']}**")
+    st.markdown("---")
+
+    st.subheader("📢 Prestação de Contas de Mídia")
+
+    with st.form("form_selva", clear_on_submit=True):
+        col1, col2 = st.columns(2)
+        with col1:
+            data_postagem = st.date_input("Data da Postagem")
+            formato = st.selectbox("Formato", ["Feed", "Story", "Reels"])
+        with col2:
+            turno_postagem = st.selectbox("Turno da Postagem", ["Manhã", "Tarde", "Noite"])
+            logo_visivel = st.checkbox("A Logo da Campanha estava visível?")
+
+        st.markdown("---")
+        st.markdown("📈 **Métricas de Desempenho (Analytics)**")
+        col_v, col_a = st.columns(2)
+        with col_v:
+            views = st.number_input("Visualizações Totais", min_value=0, step=10)
+        with col_a:
+            alcance = st.number_input("Contas Alcançadas", min_value=0, step=10)
+
+        btn_enviar = st.form_submit_button("Gerar Código e Enviar Auditoria")
+
+        if btn_enviar:
+            # --- MOTOR DE GAMIFICAÇÃO (Matemática) ---
+            pontos_base = 0
+            if formato == "Feed":
+                pontos_base = 10
+            elif formato == "Story":
+                pontos_base = 2
+            elif formato == "Reels":
+                pontos_base = 10
+
+            # Divisão inteira (//) garante que ele só ganhe os 5 pontos a cada 100 completos
+            pontos_views = (views // 100) * 5
+            pontos_alcance = (alcance // 1000) * 10
+
+            pontos_totais = pontos_base + pontos_views + pontos_alcance
+
+            # --- GERADOR CRIPTOGRÁFICO ---
+            import time
+            milissegundos = int(time.time() * 1000)
+            codigo_unico = f"SLV-{milissegundos}"
+
+            # --- ENVIO PARA O BANCO DE DADOS ---
+            try:
+                supabase.table("auditoria_selva").insert({
+                    "influenciador_id": st.session_state["usuario_id"],
+                    "data_postagem": str(data_postagem),
+                    "turno_postagem": turno_postagem,
+                    "formato": formato,
+                    "logo_visivel": logo_visivel,
+                    "views": views,
+                    "alcance": alcance,
+                    "codigo_auditoria": codigo_unico,
+                    "pontos_gerados": pontos_totais
+                }).execute()
+
+                st.success(f"✅ Auditoria enviada com sucesso!")
+                st.subheader(f"🔑 Seu Código: {codigo_unico}")
+                st.info(f"🏆 Pontuação calculada: **{pontos_totais} pontos** gerados para a sua equipe!")
+                st.warning("⚠️ IMPORTANTE: Renomeie o seu print de comprovação com o código acima e salve na nuvem!")
+            except Exception as e:
+                st.error(
+                    f"Erro ao salvar na base de dados. Verifique se as colunas estão corretas no Supabase. Detalhe: {e}")
+
 # --- 6. Roteamento Principal (O Guarda de Trânsito) ---
 if not st.session_state["logado"]:
     tela_login()
@@ -285,8 +355,7 @@ else:
     if st.session_state["perfil"] == "Lider_Rua":
         script_manada_de_leao()
     elif st.session_state["perfil"] == "Influenciador":
-        st.title("🌿 A Selva - Radar de Influência")
-        st.write("Em construção...")
+        script_a_selva()
     elif st.session_state["perfil"] == "Coordenacao":
         st.title("👁️ O Olho da Leoa - C3")
         st.write("Em construção...")
