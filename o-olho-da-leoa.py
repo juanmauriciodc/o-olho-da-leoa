@@ -430,29 +430,29 @@ def script_o_olho_da_leoa():
 
     with col_titulo:
         st.title("👁️ O Olho da Leoa - Comando C3")
-        st.write("A central de inteligência e controlo de toda a operação.")
+        st.write("A central de inteligência e controle de toda a operação.")
 
     with col_refresh:
-        st.markdown("<br>", unsafe_allow_html=True)  # Pequeno truque para alinhar o botão com o título
+        st.markdown("<br>", unsafe_allow_html=True)
         if st.button("🔄 Atualizar Painel", use_container_width=True, type="primary"):
             st.rerun()
 
     st.markdown("---")
 
+    # AS 6 ABAS MASTER DO QG (Incluindo o Inside Sales)
     aba1, aba2, aba3, aba4, aba5, aba6 = st.tabs([
         "👁️ Visão", "👑 Gamificação", "🔎 O Covil", "🐾 Despacho", "💰 O Tesouro", "📞 Inside Sales"
     ])
 
-    # === 1. MÓDULO VISÃO (SUPER DASHBOARD EXECUTIVO) ===
+    # ==========================================================
+    # ABA 1: VISÃO GLOBAL (DASHBOARD)
+    # ==========================================================
     with aba1:
         st.header("👁️ Visão Global - O Termômetro da Campanha")
         st.write("Acompanhamento das métricas de rua e cruzamento com as intenções de voto dos institutos oficiais.")
         st.markdown("---")
 
         try:
-            # ==========================================
-            # PARTE 1: DADOS DAS RUAS (NOSSA OPERAÇÃO)
-            # ==========================================
             resp_leads = supabase.table("captura_eleitores").select("id").execute()
             resp_pesquisas = supabase.table("pesquisas_rua").select("intencao_voto").execute()
             resp_turnos = supabase.table("controle_turnos").select("id").execute()
@@ -462,7 +462,6 @@ def script_o_olho_da_leoa():
             total_pesquisas = len(resp_pesquisas.data) if resp_pesquisas.data else 0
             total_turnos = len(resp_turnos.data) if resp_turnos.data else 0
 
-            # KPIs Superiores
             col_k1, col_k2, col_k3 = st.columns(3)
             with col_k1:
                 st.metric(label="👥 Total de Leads (WhatsApp)", value=total_leads, delta="Base de Disparo")
@@ -475,7 +474,6 @@ def script_o_olho_da_leoa():
             st.subheader("🔥 Termômetro Próprio (Dados captados pela Manada)")
 
             col_g1, col_g2 = st.columns(2)
-
             with col_g1:
                 st.write("**🗳️ Intenção de Voto (Pesquisa Interna)**")
                 if resp_pesquisas.data and total_pesquisas > 0:
@@ -497,18 +495,12 @@ def script_o_olho_da_leoa():
                     st.info("Aguardando os líderes finalizarem as rotas para o Clima...")
 
             st.markdown("---")
-
-            # ==========================================
-            # PARTE 2: DADOS DE MERCADO (PESQUISAS OFICIAIS)
-            # ==========================================
             st.subheader("📈 Painel de Pesquisas Oficiais (Institutos)")
 
             resp_radar = supabase.table("candidatos").select(
                 "nome, pct_datafolha, pct_ipespe, pct_fsb, pct_realtime").eq("ativo", True).execute()
-
             if resp_radar.data and len(resp_radar.data) > 0:
                 df_radar = pd.DataFrame(resp_radar.data)
-
                 linha1_col1, linha1_col2 = st.columns(2)
                 linha2_col1, linha2_col2 = st.columns(2)
 
@@ -516,59 +508,35 @@ def script_o_olho_da_leoa():
                     st.write("**📊 Instituto Datafolha**")
                     df_datafolha = df_radar[['nome', 'pct_datafolha']].rename(columns={'pct_datafolha': 'Intenção (%)'})
                     st.bar_chart(data=df_datafolha.set_index('nome'), color="#0078D4")
-
                 with linha1_col2:
                     st.write("**📊 Instituto IPESPE**")
                     df_ipespe = df_radar[['nome', 'pct_ipespe']].rename(columns={'pct_ipespe': 'Intenção (%)'})
                     st.bar_chart(data=df_ipespe.set_index('nome'), color="#004B87")
-
                 with linha2_col1:
                     st.write("**📊 FSB Pesquisa**")
                     df_fsb = df_radar[['nome', 'pct_fsb']].rename(columns={'pct_fsb': 'Intenção (%)'})
                     st.bar_chart(data=df_fsb.set_index('nome'), color="#4169E1")
-
                 with linha2_col2:
                     st.write("**📊 Real Time Big Data**")
                     df_realtime = df_radar[['nome', 'pct_realtime']].rename(columns={'pct_realtime': 'Intenção (%)'})
                     st.bar_chart(data=df_realtime.set_index('nome'), color="#4682B4")
             else:
                 st.info("Nenhum dado cadastrado. Cadastre os candidatos na aba 'Alcateia (RH) > Realeza'.")
-
         except Exception as e:
-            # ==========================================
-            # MOCKUP DE SEGURANÇA (Se o banco falhar ou faltar colunas)
-            # ==========================================
-            st.warning("⚠️ Compilando dados estruturais... Veja a projeção do Super Dashboard:")
+            st.error("Erro na compilação do painel visual.")
 
-            c1, c2, c3 = st.columns(3)
-            c1.metric("👥 Total de Leads", "1.245", "+34 hoje")
-            c2.metric("📊 Pesquisas", "890", "+12 hoje")
-            c3.metric("🚙 Turnos Executados", "45", "6 viaturas")
-
-            st.markdown("---")
-            st.subheader("📈 Painel de Pesquisas Oficiais (Projeção)")
-            l1, l2 = st.columns(2)
-            mock_cands = ["Celina Leão", "Oponente A", "Brancos/Nulos"]
-            with l1:
-                st.write("**📊 Instituto Datafolha**")
-                st.bar_chart(data=pd.DataFrame({"Intenção (%)": [38.0, 25.0, 22.0]}, index=mock_cands), color="#0078D4")
-            with l2:
-                st.write("**📊 Instituto IPESPE**")
-                st.bar_chart(data=pd.DataFrame({"Intenção (%)": [40.0, 22.0, 20.0]}, index=mock_cands), color="#004B87")
-
+    # ==========================================================
+    # ABA 2: GAMIFICAÇÃO E METAS (COM MATEMÁTICA FINA)
+    # ==========================================================
     with aba2:
         st.header("👑 Gamificação e Metas da Operação")
-
         tab_ranking, tab_metas = st.tabs(["🏆 Ranking de Equipes", "⚙️ Configurar Metas e Multiplicadores"])
 
-        # === 1. ABA DE RANKING (A MÁQUINA DE PONTOS COM MATEMÁTICA FINA) ===
         with tab_ranking:
             st.subheader("🏆 Placar de Honra e A Equipa Perfeita")
-            st.write(
-                "A Matemática Fina a operar: 10 pts (Reels/Feed), 2 pts (Story), 5 pts/100 views e 10 pts/1000 alcance.")
+            st.write("A Matemática Fina: 10 pts (Reels/Feed), 2 pts (Story), 5 pts/100 views e 10 pts/1000 alcance.")
 
             try:
-                # 1. BUSCA DOS DADOS REAIS NA BASE DE DADOS
                 turnos_db = supabase.table("controle_turnos").select("id, lider_id, equipe_ids").execute().data
                 colabs_db = supabase.table("rh_colaboradores").select("id, nome, tag").execute().data
                 leads_db = supabase.table("captura_eleitores").select("turno_id").execute().data
@@ -576,7 +544,6 @@ def script_o_olho_da_leoa():
                 digital_db = supabase.table("registro_influencia_digital").select(
                     "colaborador_id, tipo_publicacao, views, alcance").execute().data
 
-                # Multiplicador Global
                 config_db = supabase.table("configuracoes_globais").select("*").eq("id", 1).execute().data
                 mult_global = config_db[0]["multiplicador_equipe"] if config_db else 1.0
 
@@ -591,7 +558,6 @@ def script_o_olho_da_leoa():
                         dtype=float)
                     pts_pesq = pd.DataFrame(pesq_db)['turno_id'].value_counts() * 1 if pesq_db else pd.Series(
                         dtype=float)
-
                     df_turnos['Pontos_Rua_Turno'] = df_turnos['id'].map(pts_leads).fillna(0) + df_turnos['id'].map(
                         pts_pesq).fillna(0)
 
@@ -603,47 +569,39 @@ def script_o_olho_da_leoa():
                             for membro_id in row['equipe_ids']:
                                 lista_rua.append({"id_pessoa": membro_id, "Pontos_Rua": pts})
 
-                    df_pontos_rua = pd.DataFrame(lista_rua).groupby('id_pessoa')['Pontos_Rua'].sum().reset_index()
+                    df_pontos_rua = pd.DataFrame(lista_rua)
+                    if not df_pontos_rua.empty:
+                        df_pontos_rua = df_pontos_rua.groupby('id_pessoa')['Pontos_Rua'].sum().reset_index()
+                    else:
+                        df_pontos_rua = pd.DataFrame(columns=['id_pessoa', 'Pontos_Rua'])
 
-                    # --- PASSO B: MATEMÁTICA FINA DIGITAL (O ALGORITMO DO DOSSIÊ) ---
+                    # --- PASSO B: MATEMÁTICA FINA DIGITAL ---
                     if digital_db:
                         df_dig = pd.DataFrame(digital_db)
 
-                        # Função de cálculo rigoroso
                         def calcula_pontos_post(row):
                             pts = 0
                             tipo = str(row['tipo_publicacao']).lower()
-
-                            # Pontos base pelo formato
                             if 'story' in tipo or 'status' in tipo:
                                 pts += 2
                             elif 'reel' in tipo or 'feed' in tipo:
                                 pts += 10
 
-                            # Extração segura de números
                             views = int(row['views']) if pd.notnull(row['views']) else 0
                             alcance = int(row['alcance']) if pd.notnull(row['alcance']) else 0
 
-                            # Divisão inteira (//) para garantir blocos exatos
                             pts += (views // 100) * 5
                             pts += (alcance // 1000) * 10
-
                             return pts
 
-                        # Aplica a fórmula linha a linha
                         df_dig['Pontos_Post'] = df_dig.apply(calcula_pontos_post, axis=1)
-
-                        # Contadores de volume para o Ranking Visual
                         df_dig['Story'] = df_dig['tipo_publicacao'].apply(
                             lambda x: 1 if 'Story' in str(x) or 'Status' in str(x) else 0)
                         df_dig['Reel'] = df_dig['tipo_publicacao'].apply(lambda x: 1 if 'Reel' in str(x) else 0)
                         df_dig['Feed'] = df_dig['tipo_publicacao'].apply(lambda x: 1 if 'Feed' in str(x) else 0)
 
-                        # Consolida a pontuação por influenciador
                         digital_counts = df_dig.groupby('colaborador_id').agg(
-                            Story=('Story', 'sum'),
-                            Reel=('Reel', 'sum'),
-                            Feed=('Feed', 'sum'),
+                            Story=('Story', 'sum'), Reel=('Reel', 'sum'), Feed=('Feed', 'sum'),
                             Pontos_Digitais=('Pontos_Post', 'sum')
                         ).reset_index()
                     else:
@@ -651,9 +609,7 @@ def script_o_olho_da_leoa():
                             columns=['colaborador_id', 'Story', 'Reel', 'Feed', 'Pontos_Digitais'])
 
                     # --- PASSO C: O GRANDE MERGE GLOBAL ---
-                    # Garante que toda a base de RH apareça no ranking, mesmo quem tem zero pontos
                     ranking_final = pd.DataFrame({'id_pessoa': df_colabs['id']})
-
                     ranking_final = ranking_final.merge(df_pontos_rua, on='id_pessoa', how='left').fillna(0)
                     ranking_final = ranking_final.merge(digital_counts, left_on='id_pessoa', right_on='colaborador_id',
                                                         how='left').fillna(0)
@@ -662,11 +618,9 @@ def script_o_olho_da_leoa():
                     ranking_final['Patente'] = ranking_final['id_pessoa'].map(dict_patentes)
                     ranking_final['Estado Atual'] = "Turno Encerrado 🔴"
 
-                    # CÁLCULO FINAL COM MULTIPLICADOR MÁGICO
                     ranking_final['🔥 Pontuação Geral'] = (ranking_final['Pontos_Rua'] + ranking_final[
                         'Pontos_Digitais']) * mult_global
 
-                    # Limpeza de formatação
                     ranking_final['Story'] = ranking_final['Story'].astype(int)
                     ranking_final['Reel'] = ranking_final['Reel'].astype(int)
                     ranking_final['Feed'] = ranking_final['Feed'].astype(int)
@@ -674,132 +628,104 @@ def script_o_olho_da_leoa():
                     ranking_final = ranking_final.sort_values(by="🔥 Pontuação Geral", ascending=False).reset_index(
                         drop=True)
                     ranking_final.index = ranking_final.index + 1
-                else:
-                    raise ValueError("Base de dados ainda sem registos.")
 
-            except Exception as e:
-                # Mockup de Segurança
-                st.warning("⚠️ A processar matriz matemática... Confere a projeção do Placar:")
-                mock_data = {
-                    "Nome": ["Bia Viral", "Coordenador Juan", "Capitão Maurício", "Tenente Isabela"],
-                    "Patente": ["Influenciador", "Líder_Rua", "Líder_Rua", "Influenciador"],
-                    "🔥 Pontuação Geral": [2650, 650, 480, 410],
-                    "Estado Atual": ["Na Rota 🟢", "Turno Encerrado 🔴", "Na Rota 🟢", "Na Rota 🟢"],
-                    "Story": [15, 0, 0, 8], "Reel": [3, 0, 0, 1], "Feed": [2, 0, 0, 1]
-                }
-                ranking_final = pd.DataFrame(mock_data)
+                    # -- RENDERIZAÇÃO NA TELA --
+                    st.markdown("### 🌟 A Equipa Perfeita (Dream Team Global)")
 
-            if 'ranking_final' in locals() and not ranking_final.empty:
-                st.markdown("### 🌟 A Equipa Perfeita (Dream Team Global)")
+                    def get_top_by_role(df, role):
+                        filtered = df[df['Patente'].str.contains(role, case=False, na=False)]
+                        if not filtered.empty:
+                            top = filtered.sort_values(by="🔥 Pontuação Geral", ascending=False).iloc[0]
+                            return top["Nome"], top["🔥 Pontuação Geral"]
+                        return "Aguardar Dados", 0
 
-                def get_top_by_role(df, role):
-                    filtered = df[df['Patente'].str.contains(role, case=False, na=False)]
-                    if not filtered.empty:
-                        top = filtered.sort_values(by="🔥 Pontuação Geral", ascending=False).iloc[0]
-                        return top["Nome"], top["🔥 Pontuação Geral"]
-                    return "Aguardar Dados", 0
+                    top_lider, pts_lider = get_top_by_role(ranking_final, "Líder")
+                    top_mot, pts_mot = get_top_by_role(ranking_final, "Motorista")
+                    top_inf, pts_inf = get_top_by_role(ranking_final, "Influenciador")
+                    top_apo, pts_apo = get_top_by_role(ranking_final, "Apoio")
 
-                top_lider, pts_lider = get_top_by_role(ranking_final, "Líder")
-                top_mot, pts_mot = get_top_by_role(ranking_final, "Motorista")
-                top_inf, pts_inf = get_top_by_role(ranking_final, "Influenciador")
-                top_apo, pts_apo = get_top_by_role(ranking_final, "Apoio")
+                    c1, c2, c3, c4 = st.columns(4)
 
-                c1, c2, c3, c4 = st.columns(4)
+                    def render_card(coluna, titulo, icone, nome, pontos):
+                        with coluna:
+                            st.markdown(f"""
+                                <div style="background-color: #E8F4F8; padding: 15px; border-radius: 10px; border-left: 5px solid #0078D4; text-align: center; height: 100%;">
+                                    <h4 style="margin: 0; color: #004B87; font-size: 14px;">{icone} Melhor {titulo}</h4>
+                                    <p style="margin: 10px 0 5px 0; font-size: 17px; font-weight: bold; color: #1E1E1E;">{nome}</p>
+                                    <p style="margin: 0; font-size: 15px; color: #FF8C00; font-weight: bold;">{pontos:.0f} pts</p>
+                                </div>
+                            """, unsafe_allow_html=True)
 
-                def render_card(coluna, titulo, icone, nome, pontos):
-                    with coluna:
-                        st.markdown(
-                            f"""
-                                    <div style="background-color: #E8F4F8; padding: 15px; border-radius: 10px; border-left: 5px solid #0078D4; text-align: center; height: 100%;">
-                                        <h4 style="margin: 0; color: #004B87; font-size: 14px;">{icone} Melhor {titulo}</h4>
-                                        <p style="margin: 10px 0 5px 0; font-size: 17px; font-weight: bold; color: #1E1E1E;">{nome}</p>
-                                        <p style="margin: 0; font-size: 15px; color: #FF8C00; font-weight: bold;">{pontos:.0f} pts</p>
-                                    </div>
-                                    """, unsafe_allow_html=True
-                        )
+                    render_card(c1, "Líder", "👑", top_lider, pts_lider)
+                    render_card(c2, "Motorista", "🚙", top_mot, pts_mot)
+                    render_card(c3, "Influencer", "📱", top_inf, pts_inf)
+                    render_card(c4, "Apoio", "🛡️", top_apo, pts_apo)
 
-                render_card(c1, "Líder", "👑", top_lider, pts_lider)
-                render_card(c2, "Motorista", "🚙", top_mot, pts_mot)
-                render_card(c3, "Influencer", "📱", top_inf, pts_inf)
-                render_card(c4, "Apoio", "🛡️", top_apo, pts_apo)
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    st.markdown("### 📊 Rankings Individuais por Especialidade")
 
-                st.markdown("<br>", unsafe_allow_html=True)
-                st.markdown("### 📊 Rankings Individuais por Especialidade")
+                    aba_lid, aba_mot, aba_inf, aba_apo = st.tabs(
+                        ["👑 Líderes", "🚙 Motoristas", "📱 Influenciadores", "🛡️ Apoios"])
 
-                aba_lid, aba_mot, aba_inf, aba_apo = st.tabs(
-                    ["👑 Líderes", "🚙 Motoristas", "📱 Influenciadores", "🛡️ Apoios"])
-
-                def render_tabela(aba, role_keyword):
-                    with aba:
-                        df_role = ranking_final[
-                            ranking_final['Patente'].str.contains(role_keyword, case=False, na=False)].copy()
-                        if not df_role.empty:
-                            df_role = df_role.sort_values(by="🔥 Pontuação Geral", ascending=False).reset_index(
-                                drop=True)
-                            df_role.index = df_role.index + 1
-
-                            if role_keyword == "Influenciador" and "Story" in df_role.columns:
-                                st.dataframe(
-                                    df_role[["Nome", "Estado Atual", "Story", "Reel", "Feed", "🔥 Pontuação Geral"]],
-                                    use_container_width=True)
+                    def render_tabela(aba, role_keyword):
+                        with aba:
+                            df_role = ranking_final[
+                                ranking_final['Patente'].str.contains(role_keyword, case=False, na=False)].copy()
+                            if not df_role.empty:
+                                df_role = df_role.sort_values(by="🔥 Pontuação Geral", ascending=False).reset_index(
+                                    drop=True)
+                                df_role.index = df_role.index + 1
+                                if role_keyword == "Influenciador" and "Story" in df_role.columns:
+                                    st.dataframe(
+                                        df_role[["Nome", "Estado Atual", "Story", "Reel", "Feed", "🔥 Pontuação Geral"]],
+                                        use_container_width=True)
+                                else:
+                                    st.dataframe(df_role[["Nome", "Estado Atual", "🔥 Pontuação Geral"]],
+                                                 use_container_width=True)
                             else:
-                                st.dataframe(df_role[["Nome", "Estado Atual", "🔥 Pontuação Geral"]],
-                                             use_container_width=True)
-                        else:
-                            st.info(f"Sem dados operacionais para a patente de {role_keyword} neste momento.")
+                                st.info(f"Sem dados para a patente {role_keyword}.")
 
-                render_tabela(aba_lid, "Líder")
-                render_tabela(aba_mot, "Motorista")
-                render_tabela(aba_inf, "Influenciador")
-                render_tabela(aba_apo, "Apoio")
+                    render_tabela(aba_lid, "Líder")
+                    render_tabela(aba_mot, "Motorista")
+                    render_tabela(aba_inf, "Influenciador")
+                    render_tabela(aba_apo, "Apoio")
+                else:
+                    st.info("Sistema aguardando turnos operacionais.")
+            except Exception as e:
+                st.error(f"Erro no motor de gamificação: {e}")
 
-        # === 2. ABA DE METAS (O SEU CÓDIGO INTACTO) ===
         with tab_metas:
             st.subheader("Regras do Jogo (Aplica-se a todos)")
-            st.write(
-                "Defina aqui as metas. Quando o time atinge a meta combinada de panfletos, adesivos e engajamento digital, todos os pontos gerados por eles recebem esse multiplicador mágico.")
-
             with st.form("form_config_metas"):
                 col_m1, col_m2 = st.columns(2)
                 with col_m1:
-                    nova_meta_alcance = st.number_input("Meta de Alcance Digital (Por Turno)", min_value=1000,
-                                                        step=1000, value=10000)
-                    nova_meta_adesivos = st.number_input("Meta de Adesivos Colados (Por Turno)", min_value=10, step=10,
-                                                         value=100)
+                    nova_meta_alcance = st.number_input("Meta Alcance Digital", min_value=1000, step=1000, value=10000)
+                    nova_meta_adesivos = st.number_input("Meta Adesivos", min_value=10, step=10, value=100)
                 with col_m2:
-                    novo_multiplicador = st.number_input("Multiplicador de Equipe (Ex: 1.5x, 2.0x)", min_value=1.0,
-                                                         step=0.1, value=1.5)
-
-                btn_salvar_regras = st.form_submit_button("💾 Aplicar Regras para a Tropa")
-
-                if btn_salvar_regras:
+                    novo_multiplicador = st.number_input("Multiplicador (Ex: 1.5x)", min_value=1.0, step=0.1, value=1.5)
+                if st.form_submit_button("💾 Aplicar Regras"):
                     try:
-                        # Aqui você salva na sua tabela de configurações do Supabase.
                         supabase.table("configuracoes_globais").upsert({
-                            "id": 1,  # ID fixo para ter sempre apenas 1 linha de configuração ativa
-                            "meta_alcance": nova_meta_alcance,
-                            "meta_adesivos": nova_meta_adesivos,
+                            "id": 1, "meta_alcance": nova_meta_alcance, "meta_adesivos": nova_meta_adesivos,
                             "multiplicador_equipe": novo_multiplicador
                         }).execute()
-
-                        st.success(
-                            f"✅ Regras atualizadas! O Multiplicador agora é de {novo_multiplicador}x para quem bater as metas.")
+                        st.success("✅ Regras atualizadas!")
                     except Exception as e:
-                        st.error(f"Erro ao salvar configurações. Crie a tabela 'configuracoes_globais'. Detalhes: {e}")
+                        st.error("Erro ao salvar metas.")
 
+    # ==========================================================
+    # ABA 3: O COVIL (OUVIDORIA E AUDITORIA DE FRAUDES)
+    # ==========================================================
     with aba3:
         st.header("🔎 O Covil - Central de Ouvidoria e Auditoria")
-        st.write("Acompanhe o sentimento da base e audite as postagens digitais da equipa.")
+        st.write("Acompanhe o sentimento da base e audite as postagens digitais (Estorno).")
         st.markdown("---")
 
-        # Dividimos o Covil em duas secções
         tab_ouvidoria, tab_auditoria = st.tabs(["🗣️ Ouvidoria (Feedbacks)", "🕵️‍♂️ Auditoria Digital (Estorno)"])
 
-        # === 1. SUB-ABA DE OUVIDORIA (O teu código atual) ===
         with tab_ouvidoria:
             try:
                 resp_feedback = supabase.table("canal_feedback").select("*").order("created_at", desc=True).execute()
-
                 if resp_feedback.data:
                     df_feed = pd.DataFrame(resp_feedback.data)
                     tab_elogios, tab_criticas, tab_denuncias = st.tabs(["🌟 Elogios", "⚠️ Críticas", "🚨 Denúncias"])
@@ -807,18 +733,15 @@ def script_o_olho_da_leoa():
                     def exibir_mensagens(df, tipo_alvo):
                         df_filtrado = df[df["tipo"] == tipo_alvo]
                         if df_filtrado.empty:
-                            st.info(f"Nenhum(a) {tipo_alvo.lower()} registado(a).")
+                            st.info(f"Nenhum(a) {tipo_alvo.lower()} registrado(a).")
                         else:
                             for _, row in df_filtrado.iterrows():
-                                data_formatada = row['created_at'][:10]
-                                st.markdown(
-                                    f"""
+                                st.markdown(f"""
                                     <div style="background-color: #F8F9FA; padding: 15px; border-radius: 10px; border-left: 5px solid {'#FFD700' if tipo_alvo == 'Elogio' else '#FF8C00' if tipo_alvo == 'Crítica' else '#DC3545'}; margin-bottom: 10px;">
-                                        <p style="margin: 0; font-size: 12px; color: #6C757D;">Data: {data_formatada} | Alvo: <strong>{row['alvo']}</strong></p>
+                                        <p style="margin: 0; font-size: 12px; color: #6C757D;">Data: {row['created_at'][:10]} | Alvo: <strong>{row['alvo']}</strong></p>
                                         <p style="margin: 10px 0 0 0; font-size: 16px; color: #1E1E1E;">"{row['mensagem']}"</p>
                                     </div>
-                                    """, unsafe_allow_html=True
-                                )
+                                """, unsafe_allow_html=True)
 
                     with tab_elogios:
                         exibir_mensagens(df_feed, "Elogio")
@@ -829,374 +752,282 @@ def script_o_olho_da_leoa():
                 else:
                     st.info("A caixa de Ouvidoria está vazia no momento.")
             except Exception as e:
-                st.error(f"Erro na ouvidoria: {e}")
+                pass
 
-        # === 2. SUB-ABA DE AUDITORIA DIGITAL (O BOTÃO DE ESTORNO) ===
         with tab_auditoria:
             st.subheader("⚠️ Painel de Invalidação de Pontos (Selva)")
             st.write(
-                "Verificou fraude num Print? Selecione o Protocolo abaixo e aplique o Estorno. Os pontos serão subtraídos instantaneamente de toda a equipa.")
-
+                "Verificou fraude? Selecione o Protocolo e aplique o Estorno para subtrair os pontos de toda a equipe.")
             try:
-                # 1. Busca as postagens e os nomes dos colaboradores
                 resp_posts = supabase.table("registro_influencia_digital").select("*").order("id", desc=True).execute()
                 resp_colabs = supabase.table("rh_colaboradores").select("id, nome").execute()
-
                 if resp_posts.data and resp_colabs.data:
                     dict_nomes = {c["id"]: c["nome"] for c in resp_colabs.data}
-
                     df_posts = pd.DataFrame(resp_posts.data)
                     df_posts["Nome_Influenciador"] = df_posts["colaborador_id"].map(dict_nomes)
 
-                    # Exibe o painel de registos para o Coordenador olhar
-                    st.dataframe(
-                        df_posts[
-                            ["codigo_auditoria", "Nome_Influenciador", "data_referencia", "tipo_publicacao", "views",
-                             "alcance"]],
-                        use_container_width=True,
-                        hide_index=True
-                    )
+                    st.dataframe(df_posts[
+                                     ["codigo_auditoria", "Nome_Influenciador", "data_referencia", "tipo_publicacao",
+                                      "views", "alcance"]], use_container_width=True, hide_index=True)
 
-                    st.markdown("<br>", unsafe_allow_html=True)
-
-                    # 2. O Motor de Invalidação
                     with st.form("form_estorno"):
                         st.error("🚨 ZONA DE ESTORNO (Ação Irreversível)")
                         col_p, col_b = st.columns([3, 1])
-
                         with col_p:
-                            # Lista dropdown com todos os códigos gerados (ex: INF...-...)
                             lista_codigos = df_posts["codigo_auditoria"].tolist()
-                            codigo_alvo = st.selectbox("Selecione o Protocolo para Invalidar:",
-                                                       ["Selecione..."] + lista_codigos)
-
+                            codigo_alvo = st.selectbox("Selecione o Protocolo:", ["Selecione..."] + lista_codigos)
                         with col_b:
                             st.markdown("<br>", unsafe_allow_html=True)
                             btn_estorno = st.form_submit_button("🗑️ Executar Estorno")
 
                         if btn_estorno:
                             if codigo_alvo == "Selecione...":
-                                st.warning("Por favor, selecione um código válido.")
+                                st.warning("Selecione um código válido.")
                             else:
                                 try:
-                                    # Apaga o registo da base de dados, invalidando os pontos de imediato
                                     supabase.table("registro_influencia_digital").delete().eq("codigo_auditoria",
                                                                                               codigo_alvo).execute()
-                                    st.success(
-                                        f"🔥 Registo {codigo_alvo} ESTORNADO com sucesso! Os pontos da equipa foram subtraídos.")
+                                    st.success(f"🔥 Registo {codigo_alvo} ESTORNADO! Pontos subtraídos.")
                                     time.sleep(2)
                                     st.rerun()
                                 except Exception as e:
-                                    st.error(f"Erro ao tentar estornar: {e}")
+                                    st.error("Erro no estorno.")
                 else:
-                    st.info("Nenhuma postagem registada na Selva para auditar no momento.")
-            except Exception as e:
-                st.error(f"Erro ao carregar o painel de auditoria: {e}")
-
-            st.markdown("---")
-            try:
-                resp_rotas = supabase.table("planejamento_rotas").select("*").eq("status", "Pendente").execute()
-                if resp_rotas.data:
-                    df_rotas = pd.DataFrame(resp_rotas.data)
-                    st.dataframe(df_rotas[["viatura_alocada", "nome_rota", "regiao", "bairro_alvo"]], use_container_width=True)
-            except: pass
-
-        with tab_candidatos:
-            st.subheader("🦁 Gerenciamento da Realeza e Pesquisas Oficiais")
-
-            # Dividindo em abas internas para não entulhar a tela
-            sub_cadastrar, sub_atualizar_pesquisa = st.tabs(["➕ Cadastrar Nome", "📊 Atualizar % dos Institutos"])
-
-            # --- SUB-ABA 1: APENAS CADASTRAR O NOME ---
-            with sub_cadastrar:
-                with st.form("form_candidatos", clear_on_submit=True):
-                    nome_cand = st.text_input("Nome do Candidato ou Partido",
-                                              placeholder="Ex: Celina Leão, Brancos e Nulos, Oponente A")
-                    if st.form_submit_button("Registrar no Radar"):
-                        if nome_cand:
-                            try:
-                                supabase.table("candidatos").insert({
-                                    "nome": nome_cand.strip(),
-                                    "ativo": True,
-                                    "pct_datafolha": 0.0,
-                                    "pct_ipespe": 0.0,
-                                    "pct_fsb": 0.0,
-                                    "pct_realtime": 0.0
-                                }).execute()
-                                st.success(
-                                    f"✅ {nome_cand} adicionado ao radar! Agora você pode atualizar os percentuais na aba ao lado.")
-                                time.sleep(1)
-                                st.rerun()
-                            except Exception as e:
-                                st.error(f"Erro ao adicionar: {e}")
-                        else:
-                            st.warning("⚠️ Digite um nome válido.")
-
-            # --- SUB-ABA 2: ATUALIZAR AS INTENÇÕES DE VOTO ---
-            with sub_atualizar_pesquisa:
-                try:
-                    resp_cand = supabase.table("candidatos").select("*").eq("ativo", True).order("nome").execute()
-                    lista_candidatos = resp_cand.data
-                    dict_cand = {c['nome']: c for c in lista_candidatos} if lista_candidatos else {}
-                except:
-                    dict_cand = {}
-
-                if dict_cand:
-                    cand_selecionado = st.selectbox("Selecione o Candidato para atualizar os números:",
-                                                    options=list(dict_cand.keys()))
-                    dados_cand = dict_cand[cand_selecionado]
-
-                    with st.form("form_atualizar_percentuais"):
-                        st.write(f"Atualizando intenções de voto para: **{cand_selecionado}**")
-
-                        col_p1, col_p2 = st.columns(2)
-                        with col_p1:
-                            v_datafolha = st.number_input("Datafolha (%)", min_value=0.0, max_value=100.0,
-                                                          value=float(dados_cand.get('pct_datafolha', 0.0)), step=0.1)
-                            v_ipespe = st.number_input("Ipespe (%)", min_value=0.0, max_value=100.0,
-                                                       value=float(dados_cand.get('pct_ipespe', 0.0)), step=0.1)
-                        with col_p2:
-                            v_fsb = st.number_input("FSB (%)", min_value=0.0, max_value=100.0,
-                                                    value=float(dados_cand.get('pct_fsb', 0.0)), step=0.1)
-                            v_realtime = st.number_input("Real Time Big Data (%)", min_value=0.0, max_value=100.0,
-                                                         value=float(dados_cand.get('pct_realtime', 0.0)), step=0.1)
-
-                        if st.form_submit_button("💾 Salvar Números Oficiais"):
-                            try:
-                                supabase.table("candidatos").update({
-                                    "pct_datafolha": v_datafolha,
-                                    "pct_ipespe": v_ipespe,
-                                    "pct_fsb": v_fsb,
-                                    "pct_realtime": v_realtime
-                                }).eq("id", dados_cand["id"]).execute()
-
-                                st.success(f"🔥 Dados de {cand_selecionado} consolidados com sucesso!")
-                                time.sleep(1)
-                                st.rerun()
-                            except Exception as e:
-                                st.error(f"Erro ao atualizar números: {e}")
-                else:
-                    st.info("Cadastre os candidatos na aba ao lado primeiro.")
-
-        # --- MÓDULO ALCATEIA (RH) PERFEITAMENTE ALINHADO ---
-        with tab_rh:
-            st.subheader("🐺 Gerenciamento da Alcateia (RH)")
-
-            try:
-                resp_colab_list = supabase.table("rh_colaboradores").select("id, nome, tag, telefone, ativo").eq("ativo", True).order("nome").execute()
-                colaboradores = resp_colab_list.data
-                opcoes_rh = {c['nome']: c for c in colaboradores}
-            except Exception:
-                colaboradores = []
-                opcoes_rh = {}
-
-            aba_cadastrar, aba_editar, aba_inativar = st.tabs(["➕ Recrutar", "✏️ Editar Perfil", "❌ Inativar Membro"])
-
-            with aba_cadastrar:
-                with st.form("form_rh_cadastrar", clear_on_submit=True):
-                    col_n, col_t = st.columns(2)
-                    with col_n:
-                        nome_colab = st.text_input("Nome Completo / Apelido")
-                        telefone_colab = st.text_input("Telefone (WhatsApp)")
-                    with col_t:
-                        # LISTA COMPLETA COM LÍDER E GESTOR DE INSIDE
-                        tag_colab = st.selectbox("Patente (Função)", ["Líder", "Motorista", "Influenciador", "Apoio", "Gestor de Inside", "Coordenacao"])
-
-                    if st.form_submit_button("Cadastrar Membro"):
-                        if nome_colab:
-                            try:
-                                supabase.table("rh_colaboradores").insert({
-                                    "nome": nome_colab.strip(),
-                                    "tag": tag_colab,
-                                    "telefone": telefone_colab.strip(),
-                                    "ativo": True
-                                }).execute()
-                                st.success(f"✅ {nome_colab} foi convocado(a) como {tag_colab} e já pode logar no sistema!")
-                                time.sleep(1)
-                                st.rerun()
-                            except Exception as e:
-                                st.error(f"Erro ao cadastrar membro: {e}")
-                        else:
-                            st.warning("⚠️ O nome do colaborador é obrigatório.")
-
-            with aba_editar:
-                if opcoes_rh:
-                    nome_selecionado = st.selectbox("Selecione o membro para editar:", options=list(opcoes_rh.keys()), key="sel_edita")
-                    dados_atuais = opcoes_rh[nome_selecionado]
-
-                    with st.form("form_rh_editar"):
-                        col_n, col_t = st.columns(2)
-                        with col_n:
-                            novo_nome = st.text_input("Nome", value=dados_atuais['nome'])
-                            novo_telefone = st.text_input("Telefone (WhatsApp)", value=dados_atuais.get('telefone', ''))
-                        with col_t:
-                            # ESPELHANDO A LISTA COMPLETA
-                            patentes = ["Líder", "Motorista", "Influenciador", "Apoio", "Gestor de Inside", "Coordenacao"]
-                            idx_patente = patentes.index(dados_atuais['tag']) if dados_atuais['tag'] in patentes else 0
-                            nova_tag = st.selectbox("Nova Patente", patentes, index=idx_patente)
-
-                        if st.form_submit_button("💾 Salvar Alterações"):
-                            try:
-                                supabase.table("rh_colaboradores").update({
-                                    "nome": novo_nome.strip(),
-                                    "tag": nova_tag,
-                                    "telefone": novo_telefone.strip()
-                                }).eq("id", dados_atuais["id"]).execute()
-                                st.success(f"✅ Dados de {novo_nome} atualizados com sucesso!")
-                                time.sleep(1)
-                                st.rerun()
-                            except Exception as e:
-                                st.error(f"Erro ao atualizar: {e}")
-                else:
-                    st.info("Nenhum membro ativo para editar.")
-
-            with aba_inativar:
-                if opcoes_rh:
-                    nome_inativar = st.selectbox("Selecione o membro para afastar/inativar:", options=list(opcoes_rh.keys()), key="sel_inativa")
-                    dados_inativar = opcoes_rh[nome_inativar]
-
-                    with st.form("form_rh_inativar"):
-                        st.warning(f"⚠️ Tem certeza que deseja inativar **{nome_inativar}**? Esta pessoa não poderá mais acessar o sistema, mas o histórico de horas dela será mantido.")
-                        if st.form_submit_button("❌ Confirmar Inativação", type="primary"):
-                            try:
-                                supabase.table("rh_colaboradores").update({"ativo": False}).eq("id", dados_inativar["id"]).execute()
-                                st.success(f"✅ {nome_inativar} foi afastado(a) da operação.")
-                                time.sleep(1)
-                                st.rerun()
-                            except Exception as e:
-                                st.error(f"Erro ao inativar: {e}")
-                else:
-                    st.info("Nenhum membro ativo para inativar.")
-
-            st.markdown("---")
-            st.subheader("📋 Alcateia Atual (Relatório Geral)")
-            try:
-                if colaboradores:
-                    df_rh = pd.DataFrame(colaboradores)
-                    df_viz = df_rh[["nome", "tag", "telefone"]]
-                    df_viz.columns = ["Nome", "Patente (Tag)", "Telefone"]
-                    st.dataframe(df_viz, use_container_width=True)
-                else:
-                    st.info("Nenhum membro cadastrado ainda.")
+                    st.info("Nenhuma postagem registada na Selva para auditar.")
             except Exception as e:
                 pass
 
-    # --- ABA 5: O TESOURO DA LEOA ---
-    with aba5:
-        st.header("💰 O Tesouro da Leoa (Controle de Ponto e AC)")
-        tab_qg, tab_relatorio = st.tabs(["🏢 Bater Ponto Manual (Equipe QG)", "📊 Extrato de Fechamento (AC)"])
+    # ==========================================================
+    # ABA 4: DESPACHO (ROTAS E RH)
+    # ==========================================================
+    with aba4:
+        st.header("🐾 Controle da Manada (Despacho)")
+        tab_rotas, tab_candidatos, tab_rh = st.tabs(["📍 Territórios de Caça", "🦁 Realeza", "🐺 Alcateia (RH)"])
 
-        with tab_qg:
-            st.subheader("Registrar Presença - Base Interna")
-            try:
-                resp_colab = supabase.table("rh_colaboradores").select("id, nome").eq("ativo", True).execute()
-                opcoes_rh = {c['nome']: c['id'] for c in resp_colab.data}
-            except: opcoes_rh = {}
-
-            with st.form("form_ponto_qg"):
-                col_c, col_d, col_t = st.columns(3)
-                with col_c: pessoa = st.selectbox("Colaborador", options=list(opcoes_rh.keys()))
-                with col_d: data_ponto = st.date_input("Data do Expediente")
-                with col_t: turno_ponto = st.selectbox("Turno Trabalhado", ["Manhã", "Tarde", "Noite", "Integral"])
-
-                if st.form_submit_button("Registrar Ponto QG"):
+        with tab_rotas:
+            st.subheader("Mapear Novo Território")
+            with st.form("form_rotas", clear_on_submit=True):
+                col1, col2 = st.columns(2)
+                with col1:
+                    nome_rota = st.text_input("Nome da Operação")
+                    regiao = st.selectbox("Macrorregião",
+                                          ["Plano Piloto", "Asa Norte", "Asa Sul", "Taguatinga", "Ceilândia", "Gama",
+                                           "Águas Claras", "Outras"])
+                with col2:
+                    bairro_alvo = st.text_input("Bairro / Ponto")
+                    viatura_alocada = st.selectbox("Viatura", [f"Viatura {str(i).zfill(2)}" for i in range(1, 11)])
+                descricao = st.text_area("Instruções")
+                if st.form_submit_button("Despachar Rota"):
                     try:
-                        supabase.table("controle_ponto").insert({
-                            "colaborador_id": opcoes_rh[pessoa],
-                            "data_trabalho": str(data_ponto),
-                            "turno_trabalho": turno_ponto,
-                            "setor": "QG"
+                        supabase.table("planejamento_rotas").insert({
+                            "nome_rota": nome_rota, "regiao": regiao, "bairro_alvo": bairro_alvo,
+                            "descricao": descricao, "viatura_alocada": viatura_alocada, "status": "Pendente"
                         }).execute()
-                        st.success(f"✅ Ponto de {pessoa} registrado com sucesso!")
-                    except Exception as e: st.error(f"Erro: {e}")
+                        st.success("✅ Rota na gaveta!")
+                    except Exception as e:
+                        pass
 
-            # === 6. MÓDULO INSIDE SALES (FUNIL DO WHATSAPP) ===
-            with aba6:
-                st.header("📞 Inside Sales - Funil de Conversão")
-                st.write(
-                    "Acompanhe os leads capturados na rua e marque-os como convertidos após o contato via WhatsApp.")
-                st.markdown("---")
+            try:
+                resp_rotas = supabase.table("planejamento_rotas").select("*").eq("status", "Pendente").execute()
+                if resp_rotas.data: st.dataframe(
+                    pd.DataFrame(resp_rotas.data)[["viatura_alocada", "nome_rota", "regiao", "bairro_alvo"]],
+                    use_container_width=True)
+            except:
+                pass
 
+        with tab_candidatos:
+            st.subheader("🦁 Gerenciamento da Realeza e Pesquisas")
+            sub_cadastrar, sub_atualizar = st.tabs(["➕ Cadastrar Nome", "📊 Atualizar %"])
+            with sub_cadastrar:
+                with st.form("f_cand", clear_on_submit=True):
+                    nome_cand = st.text_input("Nome")
+                    if st.form_submit_button("Registrar"):
+                        try:
+                            supabase.table("candidatos").insert(
+                                {"nome": nome_cand.strip(), "ativo": True, "pct_datafolha": 0, "pct_ipespe": 0,
+                                 "pct_fsb": 0, "pct_realtime": 0}).execute()
+                            st.success("Salvo!")
+                        except:
+                            pass
+            with sub_atualizar:
                 try:
-                    # Busca os leads que ainda NÃO foram convertidos
-                    resp_leads = supabase.table("captura_eleitores").select(
-                        "id, nome_eleitor, whatsapp, bairro, convertido").eq("convertido", False).execute()
+                    lista_cand = supabase.table("candidatos").select("*").eq("ativo", True).execute().data
+                    dict_cand = {c['nome']: c for c in lista_cand} if lista_cand else {}
+                except:
+                    dict_cand = {}
+                if dict_cand:
+                    sel_cand = st.selectbox("Candidato:", options=list(dict_cand.keys()))
+                    dc = dict_cand[sel_cand]
+                    with st.form("f_upd"):
+                        c1, c2 = st.columns(2)
+                        with c1:
+                            v_df = st.number_input("Datafolha (%)", value=float(dc.get('pct_datafolha', 0)), step=0.1)
+                            v_ip = st.number_input("Ipespe (%)", value=float(dc.get('pct_ipespe', 0)), step=0.1)
+                        with c2:
+                            v_fsb = st.number_input("FSB (%)", value=float(dc.get('pct_fsb', 0)), step=0.1)
+                            v_rt = st.number_input("Real Time (%)", value=float(dc.get('pct_realtime', 0)), step=0.1)
+                        if st.form_submit_button("Salvar %"):
+                            try:
+                                supabase.table("candidatos").update(
+                                    {"pct_datafolha": v_df, "pct_ipespe": v_ip, "pct_fsb": v_fsb,
+                                     "pct_realtime": v_rt}).eq("id", dc["id"]).execute()
+                                st.success("Atualizado!")
+                            except:
+                                pass
 
-                    if resp_leads.data and len(resp_leads.data) > 0:
-                        df_leads = pd.DataFrame(resp_leads.data)
+        with tab_rh:
+            st.subheader("🐺 Gerenciamento da Alcateia (RH)")
+            try:
+                cols = supabase.table("rh_colaboradores").select("id, nome, tag, telefone, ativo").eq("ativo",
+                                                                                                      True).execute().data
+                opcoes_rh = {c['nome']: c for c in cols} if cols else {}
+            except:
+                opcoes_rh = {}
 
-                        st.subheader("📋 Fila de Contatos Pendentes")
+            aba_cad, aba_ed, aba_ina = st.tabs(["➕ Recrutar", "✏️ Editar", "❌ Inativar"])
+            with aba_cad:
+                with st.form("f_rh_c", clear_on_submit=True):
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        n_c = st.text_input("Nome")
+                        t_c = st.text_input("WhatsApp")
+                    with c2:
+                        p_c = st.selectbox("Patente",
+                                           ["Líder", "Motorista", "Influenciador", "Apoio", "Gestor de Inside",
+                                            "Coordenacao"])
+                    if st.form_submit_button("Cadastrar"):
+                        try:
+                            supabase.table("rh_colaboradores").insert(
+                                {"nome": n_c.strip(), "tag": p_c, "telefone": t_c.strip(), "ativo": True}).execute()
+                            st.success("Cadastrado!")
+                        except:
+                            pass
+            with aba_ed:
+                if opcoes_rh:
+                    sel_ed = st.selectbox("Membro:", options=list(opcoes_rh.keys()))
+                    d_atuais = opcoes_rh[sel_ed]
+                    with st.form("f_rh_e"):
+                        c1, c2 = st.columns(2)
+                        with c1:
+                            nn = st.text_input("Nome", value=d_atuais['nome'])
+                            nt = st.text_input("WhatsApp", value=d_atuais.get('telefone', ''))
+                        with c2:
+                            pats = ["Líder", "Motorista", "Influenciador", "Apoio", "Gestor de Inside", "Coordenacao"]
+                            ntg = st.selectbox("Patente", pats,
+                                               index=pats.index(d_atuais['tag']) if d_atuais['tag'] in pats else 0)
+                        if st.form_submit_button("Salvar"):
+                            try:
+                                supabase.table("rh_colaboradores").update(
+                                    {"nome": nn.strip(), "tag": ntg, "telefone": nt.strip()}).eq("id", d_atuais[
+                                    "id"]).execute()
+                                st.success("Atualizado!")
+                            except:
+                                pass
+            with aba_ina:
+                if opcoes_rh:
+                    sel_in = st.selectbox("Afastar:", options=list(opcoes_rh.keys()))
+                    with st.form("f_rh_i"):
+                        st.warning("Inativar membro?")
+                        if st.form_submit_button("Confirmar"):
+                            try:
+                                supabase.table("rh_colaboradores").update({"ativo": False}).eq("id", opcoes_rh[sel_in][
+                                    "id"]).execute()
+                                st.success("Inativado!")
+                            except:
+                                pass
 
-                        # Usando st.data_editor para criar o checkbox interativo pedido no protocolo
-                        edited_df = st.data_editor(
-                            df_leads,
-                            column_config={
-                                "convertido": st.column_config.CheckboxColumn("✅ Convertido?", default=False),
-                                "id": None,  # Esconde o ID interno do banco
-                                "nome_eleitor": st.column_config.TextColumn("Nome do Eleitor", disabled=True),
-                                "whatsapp": st.column_config.TextColumn("WhatsApp", disabled=True),
-                                "bairro": st.column_config.TextColumn("Bairro", disabled=True),
-                            },
-                            hide_index=True,
-                            use_container_width=True,
-                            key="editor_leads"
-                        )
-
-                        st.markdown("<br>", unsafe_allow_html=True)
-
-                        # Botão para salvar as conversões no banco
-                        if st.button("💾 Salvar Conversões Selecionadas", type="primary"):
-                            # Filtra apenas as linhas onde o checkbox foi marcado como True pelo operador
-                            leads_convertidos = edited_df[edited_df["convertido"] == True]
-
-                            if not leads_convertidos.empty:
-                                sucesso = 0
-                                for _, row in leads_convertidos.iterrows():
-                                    try:
-                                        supabase.table("captura_eleitores").update({"convertido": True}).eq("id", row[
-                                            "id"]).execute()
-                                        sucesso += 1
-                                    except Exception as e:
-                                        st.error(f"Erro ao converter {row['nome_eleitor']}: {e}")
-
-                                if sucesso > 0:
-                                    st.success(
-                                        f"🔥 Sensacional! {sucesso} lead(s) convertido(s) com sucesso. A manada está crescendo!")
-                                    time.sleep(2)
-                                    st.rerun()
-                            else:
-                                st.warning("⚠️ Nenhuma caixa foi marcada. Marque os leads convertidos antes de salvar.")
-                    else:
-                        st.info("🎉 Fila limpa! Todos os leads capturados nas ruas já foram contatados e convertidos.")
-
-                except Exception as e:
-                    st.error(
-                        f"Erro ao carregar o funil de vendas. Verifique se a coluna 'convertido' existe no banco de dados. Detalhe: {e}")
-
-        with tab_relatorio:
-            st.subheader("Relatório Sintético de Turnos (Base para Liberação de AC)")
-            st.write("Este painel resume quantos dias e quantos turnos cada pessoa trabalhou, fornecendo a métrica exata para a consolidação das Ajudas de Custo.")
-            if st.button("🔄 Gerar Extrato de AC"):
+    # ==========================================================
+    # ABA 5: O TESOURO (CONTROLE DE PONTO)
+    # ==========================================================
+    with aba5:
+        st.header("💰 O Tesouro da Leoa (Ponto e AC)")
+        tab_qg, tab_rel = st.tabs(["🏢 Ponto QG", "📊 Extrato de AC"])
+        with tab_qg:
+            try:
+                r_c = supabase.table("rh_colaboradores").select("id, nome").eq("ativo", True).execute().data
+                o_rh = {c['nome']: c['id'] for c in r_c} if r_c else {}
+            except:
+                o_rh = {}
+            with st.form("f_p_qg"):
+                c1, c2, c3 = st.columns(3)
+                with c1:
+                    pess = st.selectbox("Colaborador", options=list(o_rh.keys()))
+                with c2:
+                    dp = st.date_input("Data")
+                with c3:
+                    tp = st.selectbox("Turno", ["Manhã", "Tarde", "Noite", "Integral"])
+                if st.form_submit_button("Registrar Ponto"):
+                    try:
+                        supabase.table("controle_ponto").insert(
+                            {"colaborador_id": o_rh[pess], "data_trabalho": str(dp), "turno_trabalho": tp,
+                             "setor": "QG"}).execute()
+                        st.success("Ponto registrado!")
+                    except:
+                        pass
+        with tab_rel:
+            if st.button("Gerar Extrato"):
                 try:
-                    resp_ponto = supabase.table("controle_ponto").select("*").execute()
-                    resp_rh = supabase.table("rh_colaboradores").select("id, nome, tag").execute()
+                    df_p = pd.DataFrame(supabase.table("controle_ponto").select("*").execute().data)
+                    df_r = pd.DataFrame(supabase.table("rh_colaboradores").select("id, nome, tag").execute().data)
+                    res = df_p.merge(df_r, left_on='colaborador_id', right_on='id').groupby(['nome', 'tag']).agg(
+                        Dias=('data_trabalho', 'nunique'), Turnos=('turno_trabalho', 'count')).reset_index()
+                    st.dataframe(res.sort_values(by="Turnos", ascending=False), use_container_width=True)
+                except:
+                    st.error("Erro ao gerar extrato.")
 
-                    if resp_ponto.data and resp_rh.data:
-                        df_ponto = pd.DataFrame(resp_ponto.data)
-                        df_rh = pd.DataFrame(resp_rh.data)
+    # ==========================================================
+    # ABA 6: INSIDE SALES (FUNIL DO WHATSAPP)
+    # ==========================================================
+    with aba6:
+        st.header("📞 Inside Sales - Funil de Conversão")
+        st.write("Acompanhe os leads capturados na rua e marque-os como convertidos após o contato via WhatsApp.")
+        st.markdown("---")
 
-                        df_merged = df_ponto.merge(df_rh, left_on='colaborador_id', right_on='id')
+        try:
+            resp_leads = supabase.table("captura_eleitores").select(
+                "id, nome_eleitor, whatsapp, bairro, convertido").eq("convertido", False).execute()
 
-                        resumo = df_merged.groupby(['nome', 'tag']).agg(
-                            Dias_Trabalhados=('data_trabalho', 'nunique'),
-                            Total_de_Turnos=('turno_trabalho', 'count')
-                        ).reset_index()
+            if resp_leads.data and len(resp_leads.data) > 0:
+                df_leads = pd.DataFrame(resp_leads.data)
+                st.subheader("📋 Fila de Contatos Pendentes")
 
-                        st.dataframe(resumo.sort_values(by="Total_de_Turnos", ascending=False), use_container_width=True)
+                edited_df = st.data_editor(
+                    df_leads,
+                    column_config={
+                        "convertido": st.column_config.CheckboxColumn("✅ Convertido?", default=False),
+                        "id": None,
+                        "nome_eleitor": st.column_config.TextColumn("Nome do Eleitor", disabled=True),
+                        "whatsapp": st.column_config.TextColumn("WhatsApp", disabled=True),
+                        "bairro": st.column_config.TextColumn("Bairro", disabled=True),
+                    },
+                    hide_index=True,
+                    use_container_width=True,
+                    key="editor_leads"
+                )
+
+                st.markdown("<br>", unsafe_allow_html=True)
+
+                if st.button("💾 Salvar Conversões Selecionadas", type="primary"):
+                    leads_convertidos = edited_df[edited_df["convertido"] == True]
+                    if not leads_convertidos.empty:
+                        sucesso = 0
+                        for _, row in leads_convertidos.iterrows():
+                            try:
+                                supabase.table("captura_eleitores").update({"convertido": True}).eq("id",
+                                                                                                    row["id"]).execute()
+                                sucesso += 1
+                            except Exception as e:
+                                st.error(f"Erro ao converter: {e}")
+                        if sucesso > 0:
+                            st.success(f"🔥 {sucesso} lead(s) convertido(s) com sucesso!")
+                            time.sleep(2)
+                            st.rerun()
                     else:
-                        st.warning("Ainda não há registros de ponto no sistema.")
-                except Exception as e:
-                    st.error(f"Erro ao compilar o extrato: {e}")
+                        st.warning("⚠️ Marque os leads convertidos antes de salvar.")
+            else:
+                st.info("🎉 Fila limpa! Todos os leads capturados já foram contatados.")
+        except Exception as e:
+            st.error(f"Erro ao carregar o funil. Detalhe: {e}")
 
 # --- 6. Roteamento Principal (O MOTOR QUE ESTAVA FALTANDO) ---
 if not st.session_state["logado"]:
