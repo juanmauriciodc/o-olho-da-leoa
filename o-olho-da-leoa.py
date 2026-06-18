@@ -439,8 +439,8 @@ def script_o_olho_da_leoa():
 
     st.markdown("---")
 
-    aba1, aba2, aba3, aba4, aba5 = st.tabs([
-        "👁️ Visão", "👑 Gamificação", "🔎 O Covil", "🐾 Despacho", "💰 O Tesouro (Controlo de Turnos e AC)"
+    aba1, aba2, aba3, aba4, aba5, aba6 = st.tabs([
+        "👁️ Visão", "👑 Gamificação", "🔎 O Covil", "🐾 Despacho", "💰 O Tesouro", "📞 Inside Sales"
     ])
 
     # === 1. MÓDULO VISÃO (SUPER DASHBOARD EXECUTIVO) ===
@@ -1035,6 +1035,69 @@ def script_o_olho_da_leoa():
                         }).execute()
                         st.success(f"✅ Ponto de {pessoa} registrado com sucesso!")
                     except Exception as e: st.error(f"Erro: {e}")
+
+            # === 6. MÓDULO INSIDE SALES (FUNIL DO WHATSAPP) ===
+            with aba6:
+                st.header("📞 Inside Sales - Funil de Conversão")
+                st.write(
+                    "Acompanhe os leads capturados na rua e marque-os como convertidos após o contato via WhatsApp.")
+                st.markdown("---")
+
+                try:
+                    # Busca os leads que ainda NÃO foram convertidos
+                    resp_leads = supabase.table("captura_eleitores").select(
+                        "id, nome_eleitor, whatsapp, bairro, convertido").eq("convertido", False).execute()
+
+                    if resp_leads.data and len(resp_leads.data) > 0:
+                        df_leads = pd.DataFrame(resp_leads.data)
+
+                        st.subheader("📋 Fila de Contatos Pendentes")
+
+                        # Usando st.data_editor para criar o checkbox interativo pedido no protocolo
+                        edited_df = st.data_editor(
+                            df_leads,
+                            column_config={
+                                "convertido": st.column_config.CheckboxColumn("✅ Convertido?", default=False),
+                                "id": None,  # Esconde o ID interno do banco
+                                "nome_eleitor": st.column_config.TextColumn("Nome do Eleitor", disabled=True),
+                                "whatsapp": st.column_config.TextColumn("WhatsApp", disabled=True),
+                                "bairro": st.column_config.TextColumn("Bairro", disabled=True),
+                            },
+                            hide_index=True,
+                            use_container_width=True,
+                            key="editor_leads"
+                        )
+
+                        st.markdown("<br>", unsafe_allow_html=True)
+
+                        # Botão para salvar as conversões no banco
+                        if st.button("💾 Salvar Conversões Selecionadas", type="primary"):
+                            # Filtra apenas as linhas onde o checkbox foi marcado como True pelo operador
+                            leads_convertidos = edited_df[edited_df["convertido"] == True]
+
+                            if not leads_convertidos.empty:
+                                sucesso = 0
+                                for _, row in leads_convertidos.iterrows():
+                                    try:
+                                        supabase.table("captura_eleitores").update({"convertido": True}).eq("id", row[
+                                            "id"]).execute()
+                                        sucesso += 1
+                                    except Exception as e:
+                                        st.error(f"Erro ao converter {row['nome_eleitor']}: {e}")
+
+                                if sucesso > 0:
+                                    st.success(
+                                        f"🔥 Sensacional! {sucesso} lead(s) convertido(s) com sucesso. A manada está crescendo!")
+                                    time.sleep(2)
+                                    st.rerun()
+                            else:
+                                st.warning("⚠️ Nenhuma caixa foi marcada. Marque os leads convertidos antes de salvar.")
+                    else:
+                        st.info("🎉 Fila limpa! Todos os leads capturados nas ruas já foram contatados e convertidos.")
+
+                except Exception as e:
+                    st.error(
+                        f"Erro ao carregar o funil de vendas. Verifique se a coluna 'convertido' existe no banco de dados. Detalhe: {e}")
 
         with tab_relatorio:
             st.subheader("Relatório Sintético de Turnos (Base para Liberação de AC)")
