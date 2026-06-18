@@ -747,77 +747,109 @@ def script_o_olho_da_leoa():
 
     with aba3:
         st.header("🔎 O Covil - Central de Ouvidoria e Auditoria")
-        st.write("Acompanhe o sentimento da base. Todas as mensagens recebidas aqui são estritamente confidenciais e anônimas.")
+        st.write("Acompanhe o sentimento da base e audite as postagens digitais da equipa.")
         st.markdown("---")
 
-        try:
-            # Busca todos os feedbacks registrados
-            resp_feedback = supabase.table("canal_feedback").select("*").order("created_at", desc=True).execute()
+        # Dividimos o Covil em duas secções
+        tab_ouvidoria, tab_auditoria = st.tabs(["🗣️ Ouvidoria (Feedbacks)", "🕵️‍♂️ Auditoria Digital (Estorno)"])
 
-            if resp_feedback.data:
-                df_feed = pd.DataFrame(resp_feedback.data)
+        # === 1. SUB-ABA DE OUVIDORIA (O teu código atual) ===
+        with tab_ouvidoria:
+            try:
+                resp_feedback = supabase.table("canal_feedback").select("*").order("created_at", desc=True).execute()
 
-                # Criando as abas de filtro visual para a coordenação ler com facilidade
-                tab_elogios, tab_criticas, tab_denuncias = st.tabs(["🌟 Elogios", "⚠️ Críticas", "🚨 Denúncias"])
+                if resp_feedback.data:
+                    df_feed = pd.DataFrame(resp_feedback.data)
+                    tab_elogios, tab_criticas, tab_denuncias = st.tabs(["🌟 Elogios", "⚠️ Críticas", "🚨 Denúncias"])
 
-                def exibir_mensagens(df, tipo_alvo):
-                    df_filtrado = df[df["tipo"] == tipo_alvo]
-                    if df_filtrado.empty:
-                        st.info(f"Nenhum(a) {tipo_alvo.lower()} registrado(a).")
-                    else:
-                        for _, row in df_filtrado.iterrows():
-                            # Formatando a data de forma amigável
-                            data_formatada = row['created_at'][:10]
+                    def exibir_mensagens(df, tipo_alvo):
+                        df_filtrado = df[df["tipo"] == tipo_alvo]
+                        if df_filtrado.empty:
+                            st.info(f"Nenhum(a) {tipo_alvo.lower()} registado(a).")
+                        else:
+                            for _, row in df_filtrado.iterrows():
+                                data_formatada = row['created_at'][:10]
+                                st.markdown(
+                                    f"""
+                                    <div style="background-color: #F8F9FA; padding: 15px; border-radius: 10px; border-left: 5px solid {'#FFD700' if tipo_alvo == 'Elogio' else '#FF8C00' if tipo_alvo == 'Crítica' else '#DC3545'}; margin-bottom: 10px;">
+                                        <p style="margin: 0; font-size: 12px; color: #6C757D;">Data: {data_formatada} | Alvo: <strong>{row['alvo']}</strong></p>
+                                        <p style="margin: 10px 0 0 0; font-size: 16px; color: #1E1E1E;">"{row['mensagem']}"</p>
+                                    </div>
+                                    """, unsafe_allow_html=True
+                                )
 
-                            st.markdown(
-                                f"""
-                                <div style="background-color: #F8F9FA; padding: 15px; border-radius: 10px; border-left: 5px solid {'#FFD700' if tipo_alvo == 'Elogio' else '#FF8C00' if tipo_alvo == 'Crítica' else '#DC3545'}; margin-bottom: 10px;">
-                                    <p style="margin: 0; font-size: 12px; color: #6C757D;">Data: {data_formatada} | Alvo: <strong>{row['alvo']}</strong></p>
-                                    <p style="margin: 10px 0 0 0; font-size: 16px; color: #1E1E1E;">"{row['mensagem']}"</p>
-                                </div>
-                                """, unsafe_allow_html=True
-                            )
+                    with tab_elogios:
+                        exibir_mensagens(df_feed, "Elogio")
+                    with tab_criticas:
+                        exibir_mensagens(df_feed, "Crítica")
+                    with tab_denuncias:
+                        exibir_mensagens(df_feed, "Denúncia")
+                else:
+                    st.info("A caixa de Ouvidoria está vazia no momento.")
+            except Exception as e:
+                st.error(f"Erro na ouvidoria: {e}")
 
-                with tab_elogios:
-                    exibir_mensagens(df_feed, "Elogio")
+        # === 2. SUB-ABA DE AUDITORIA DIGITAL (O BOTÃO DE ESTORNO) ===
+        with tab_auditoria:
+            st.subheader("⚠️ Painel de Invalidação de Pontos (Selva)")
+            st.write(
+                "Verificou fraude num Print? Selecione o Protocolo abaixo e aplique o Estorno. Os pontos serão subtraídos instantaneamente de toda a equipa.")
 
-                with tab_criticas:
-                    exibir_mensagens(df_feed, "Crítica")
+            try:
+                # 1. Busca as postagens e os nomes dos colaboradores
+                resp_posts = supabase.table("registro_influencia_digital").select("*").order("id", desc=True).execute()
+                resp_colabs = supabase.table("rh_colaboradores").select("id, nome").execute()
 
-                with tab_denuncias:
-                    exibir_mensagens(df_feed, "Denúncia")
-            else:
-                st.info("A caixa de Ouvidoria está vazia no momento.")
+                if resp_posts.data and resp_colabs.data:
+                    dict_nomes = {c["id"]: c["nome"] for c in resp_colabs.data}
 
-        except Exception as e:
-            st.error(f"Erro ao carregar dados da ouvidoria. Crie a tabela 'canal_feedback'. Detalhe: {e}")
+                    df_posts = pd.DataFrame(resp_posts.data)
+                    df_posts["Nome_Influenciador"] = df_posts["colaborador_id"].map(dict_nomes)
 
-    with aba4:
-        st.header("🐾 Controle da Manada (Despacho)")
+                    # Exibe o painel de registos para o Coordenador olhar
+                    st.dataframe(
+                        df_posts[
+                            ["codigo_auditoria", "Nome_Influenciador", "data_referencia", "tipo_publicacao", "views",
+                             "alcance"]],
+                        use_container_width=True,
+                        hide_index=True
+                    )
 
-        # --- Sub-abas principais do despacho ---
-        tab_rotas, tab_candidatos, tab_rh = st.tabs(["📍 Territórios de Caça", "🦁 Realeza", "🐺 Alcateia (RH)"])
+                    st.markdown("<br>", unsafe_allow_html=True)
 
-        with tab_rotas:
-            st.subheader("Mapear Novo Território (Alocar Rota para Viatura)")
-            with st.form("form_rotas", clear_on_submit=True):
-                col1, col2 = st.columns(2)
-                with col1:
-                    nome_rota = st.text_input("Nome da Operação")
-                    regiao = st.selectbox("Macrorregião", ["Plano Piloto", "Asa Norte", "Asa Sul", "Taguatinga", "Ceilândia", "Gama", "Águas Claras", "Outras"])
-                with col2:
-                    bairro_alvo = st.text_input("Bairro / Ponto")
-                    viatura_alocada = st.selectbox("Qual carro fará esta rota?", [f"Viatura {str(i).zfill(2)}" for i in range(1, 11)])
+                    # 2. O Motor de Invalidação
+                    with st.form("form_estorno"):
+                        st.error("🚨 ZONA DE ESTORNO (Ação Irreversível)")
+                        col_p, col_b = st.columns([3, 1])
 
-                descricao = st.text_area("Instruções da Missão")
-                if st.form_submit_button("Despachar Rota"):
-                    try:
-                        supabase.table("planejamento_rotas").insert({
-                            "nome_rota": nome_rota, "regiao": regiao, "bairro_alvo": bairro_alvo,
-                            "descricao": descricao, "viatura_alocada": viatura_alocada, "status": "Pendente"
-                        }).execute()
-                        st.success(f"✅ Rota colocada na gaveta da {viatura_alocada}!")
-                    except Exception as e: st.error(f"Erro: {e}")
+                        with col_p:
+                            # Lista dropdown com todos os códigos gerados (ex: INF...-...)
+                            lista_codigos = df_posts["codigo_auditoria"].tolist()
+                            codigo_alvo = st.selectbox("Selecione o Protocolo para Invalidar:",
+                                                       ["Selecione..."] + lista_codigos)
+
+                        with col_b:
+                            st.markdown("<br>", unsafe_allow_html=True)
+                            btn_estorno = st.form_submit_button("🗑️ Executar Estorno")
+
+                        if btn_estorno:
+                            if codigo_alvo == "Selecione...":
+                                st.warning("Por favor, selecione um código válido.")
+                            else:
+                                try:
+                                    # Apaga o registo da base de dados, invalidando os pontos de imediato
+                                    supabase.table("registro_influencia_digital").delete().eq("codigo_auditoria",
+                                                                                              codigo_alvo).execute()
+                                    st.success(
+                                        f"🔥 Registo {codigo_alvo} ESTORNADO com sucesso! Os pontos da equipa foram subtraídos.")
+                                    time.sleep(2)
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"Erro ao tentar estornar: {e}")
+                else:
+                    st.info("Nenhuma postagem registada na Selva para auditar no momento.")
+            except Exception as e:
+                st.error(f"Erro ao carregar o painel de auditoria: {e}")
 
             st.markdown("---")
             try:
