@@ -229,20 +229,33 @@ def script_manada_de_leao():
         st.subheader("📱 1. Captação de Eleitores")
         with st.form("form_captura", clear_on_submit=True):
             col_n, col_z = st.columns(2)
-            with col_n: nome_eleitor = st.text_input("Nome do Eleitor")
-            with col_z: zap_eleitor = st.text_input("WhatsApp (com DDD)")
+            with col_n:
+                nome_eleitor = st.text_input("Nome do Eleitor")
+            with col_z:
+                zap_eleitor = st.text_input("WhatsApp (com DDD)")
             bairro_eleitor = st.text_input("Bairro")
 
             if st.form_submit_button("Salvar Contato (+3 Pontos)"):
                 if nome_eleitor and zap_eleitor:
                     try:
+                        # Tratamento para enviar nulo caso o carro não tenha rota fixa
+                        id_da_rota = rota_id_db if rota_id_db else None
+
                         supabase.table("captura_eleitores").insert({
-                            "turno_id": st.session_state["turno_id_atual"], "rota_id": rota_id_db,
-                            "nome_eleitor": nome_eleitor.strip(), "whatsapp": zap_eleitor.strip(), "bairro": bairro_eleitor.strip()
+                            "turno_id": st.session_state["turno_id_atual"],
+                            "rota_id": id_da_rota,
+                            "nome_eleitor": nome_eleitor.strip(),
+                            "whatsapp": zap_eleitor.strip(),
+                            "bairro": bairro_eleitor.strip(),
+                            "convertido": False  # Já conectando com a tela do Gestor de Inside!
                         }).execute()
-                        st.toast("✅ Lead capturado!")
-                    except Exception: st.error("Erro ao salvar.")
-                else: st.warning("⚠️ Preencha Nome e WhatsApp.")
+
+                        st.success("✅ Lead capturado com sucesso e salvo no banco de dados!")
+                    except Exception as e:
+                        # Agora, se der erro, o sistema não fica mais calado!
+                        st.error(f"🚨 Erro ao salvar no banco. Detalhe: {e}")
+                else:
+                    st.warning("⚠️ Preencha Nome e WhatsApp.")
 
         st.markdown("---")
         st.subheader("📊 2. Senso da Rua (Pesquisa Rápida)")
