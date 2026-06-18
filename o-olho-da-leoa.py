@@ -49,7 +49,7 @@ def tela_login():
                             st.session_state["perfil"] = "Lider_Rua"
                         elif tag == "Influenciador":
                             st.session_state["perfil"] = "Influenciador"
-                        elif tag == "Coordenacao":
+                        elif tag in ["Coordenacao", "Gestor de Inside"]:
                             st.session_state["perfil"] = "Coordenacao"
                         st.rerun()
                     else:
@@ -930,7 +930,7 @@ def script_o_olho_da_leoa():
                         nome_colab = st.text_input("Nome Completo / Apelido")
                         telefone_colab = st.text_input("Telefone (WhatsApp)")
                     with col_t:
-                        tag_colab = st.selectbox("Patente (Função)", ["Motorista", "Influenciador", "Apoio", "Coordenacao"])
+                        tag_colab = st.selectbox("Patente (Função)", ["Motorista", "Influenciador", "Apoio", "Gestor de Inside", "Coordenacao"])
 
                     if st.form_submit_button("Cadastrar Membro"):
                         if nome_colab:
