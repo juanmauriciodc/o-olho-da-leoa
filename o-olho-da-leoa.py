@@ -348,6 +348,7 @@ def script_a_selva():
             data_acao = st.date_input("Data em que a ação/foto foi feita")
         with col_t:
             turno_acao = st.selectbox("Turno da Ação", ["Manhã", "Tarde", "Noite", "Integral"])
+            tipo_pub = st.selectbox("Qual o formato do post?", ["Story", "Reel", "Feed", "Status"])
 
         col_v, col_a = st.columns(2)
         with col_v:
@@ -380,6 +381,7 @@ def script_a_selva():
                         "turno_referencia": turno_acao,
                         "codigo_auditoria": codigo_auditoria,
                         "arquivo_comprovante": novo_nome_arquivo,
+                        "tipo_publicacao": tipo_pub,  # <--- SÓ ADICIONE ESTA LINHA AQUI
                         "views": views,
                         "alcance": alcance
                     }).execute()
@@ -422,14 +424,14 @@ def script_a_selva():
         st.subheader("📜 Seu Histórico de Disparos")
         try:
             resp_historico = supabase.table("registro_influencia_digital").select(
-                "data_referencia, codigo_auditoria, views, alcance"
+                "data_referencia, tipo_publicacao, views, alcance"  # <--- Mudamos aqui
             ).eq("colaborador_id", st.session_state["usuario_id"]).order(
                 "id", desc=True
             ).limit(5).execute()
 
             if resp_historico.data:
                 df_hist = pd.DataFrame(resp_historico.data)
-                df_hist.columns = ["Data Ref.", "Protocolo (Arquivo)", "Views", "Alcance"]
+                df_hist.columns = ["Data Ref.", "Formato", "Views", "Alcance"]  # <--- Renomeamos aqui
                 st.dataframe(df_hist, use_container_width=True)
             else:
                 st.info("Nenhuma postagem registada ainda. Vá para as redes! 🦁")
