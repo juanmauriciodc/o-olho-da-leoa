@@ -45,7 +45,8 @@ def tela_login():
                         st.session_state["usuario_id"] = usuario_db["id"]
                         tag = usuario_db["tag"]
 
-                        if tag in ["Motorista", "Apoio"]:
+                        # Roteamento Corrigido com as Patentes Novas
+                        if tag in ["Líder", "Motorista", "Apoio"]:
                             st.session_state["perfil"] = "Lider_Rua"
                         elif tag == "Influenciador":
                             st.session_state["perfil"] = "Influenciador"
@@ -57,33 +58,28 @@ def tela_login():
                 else:
                     st.error("❌ Usuário não encontrado.")
 
-        # === NOVO: CANAL DE FEEDBACK ANÔNIMO ===
+        # === CANAL DE FEEDBACK ANÔNIMO ===
         st.markdown("<br><br>", unsafe_allow_html=True)
         st.markdown("---")
         st.subheader("🗣️ Ouvidoria da Alcateia (Canal Anônimo)")
         st.write("Tem algo a dizer? Este canal é 100% confidencial. O sistema não registra quem enviou a mensagem.")
 
-        # 1. Puxar nomes dos colaboradores para a lista
         try:
             resp_colab = supabase.table("rh_colaboradores").select("nome").eq("ativo", True).order("nome").execute()
             lista_nomes = [c["nome"] for c in resp_colab.data]
         except Exception:
             lista_nomes = []
 
-        # 2. Escolha dinâmica (Fora do form para atualizar as opções abaixo)
         tipo_feedback = st.radio("Qual o tipo de mensagem?", ["🌟 Elogio", "⚠️ Crítica", "🚨 Denúncia"], horizontal=True)
 
-        # Configura as opções dependendo do tipo de feedback
         if tipo_feedback == "🌟 Elogio":
             opcoes_alvo = ["Selecione a pessoa..."] + lista_nomes
         else:
             opcoes_alvo = ["Selecione o alvo..."] + lista_nomes + ["📍 Rotas", "🚙 Carro/Viatura", "📦 Material", "Outros"]
 
-        # 3. Formulário de Envio
         with st.form("form_ouvidoria", clear_on_submit=True):
             alvo = st.selectbox("Sobre quem ou o quê?", opcoes_alvo)
-            mensagem = st.text_area("Descreva o motivo com detalhes:",
-                                    placeholder="Sua mensagem é segura e sigilosa...")
+            mensagem = st.text_area("Descreva o motivo com detalhes:", placeholder="Sua mensagem é segura e sigilosa...")
 
             btn_enviar_feedback = st.form_submit_button("📩 Enviar Anonimamente")
 
@@ -94,15 +90,12 @@ def tela_login():
                     st.warning("⚠️ Escreva um pouco mais de detalhes na sua mensagem.")
                 else:
                     try:
-                        # Salva no banco (Lembre-se de criar a tabela 'canal_feedback')
-                        # Note que NÃO estamos enviando o ID de quem escreveu. É 100% anônimo!
                         supabase.table("canal_feedback").insert({
                             "tipo": tipo_feedback.replace("🌟 ", "").replace("⚠️ ", "").replace("🚨 ", ""),
                             "alvo": alvo,
                             "mensagem": mensagem.strip()
                         }).execute()
-                        st.success(
-                            "✅ Sua mensagem foi enviada diretamente para a Coordenação Geral. Obrigado por ajudar a melhorar nossa operação!")
+                        st.success("✅ Sua mensagem foi enviada diretamente para a Coordenação Geral. Obrigado por ajudar a melhorar nossa operação!")
                     except Exception as e:
                         st.error(f"Erro ao enviar. Verifique se a tabela 'canal_feedback' existe. Detalhes: {e}")
 
@@ -112,51 +105,37 @@ def script_manada_de_leao():
     st.write(f"Líder Escalonado: **{st.session_state['nome_usuario']}**")
     st.markdown("---")
 
-    def script_manada_de_leao():
-        st.header("🚙 Manada de Leão - Tático de Rua")
-        st.write(f"Líder Escalonado: **{st.session_state['nome_usuario']}**")
-        st.markdown("---")
+    # === 🎯 BLOCO DE DESAFIO LANÇADO (VISÃO DO LÍDER) ===
+    try:
+        config_db = supabase.table("configuracoes_globais").select("*").eq("id", 1).execute().data
+        if config_db:
+            meta = config_db[0]
+            mult = meta['multiplicador_equipe']
+            meta_adesivos = meta['meta_adesivos']
 
-        # === 🎯 BLOCO DE DESAFIO LANÇADO (VISÃO DO LÍDER) ===
-        try:
-            # Busca a meta no banco
-            config_db = supabase.table("configuracoes_globais").select("*").eq("id", 1).execute().data
-            if config_db:
-                meta = config_db[0]
-                mult = meta['multiplicador_equipe']
-                meta_adesivos = meta['meta_adesivos']
-
-                # Cálculo de progresso (Simulado ou Real baseado no turno atual)
-                # Aqui buscamos quantos adesivos o turno atual já registrou como sobra ou saída
-                progresso_atual = 0
-                if st.session_state.get("turno_id_atual"):
-                    # Busca material embarcado menos o que o influencer relatou (ou lógica similar)
-                    # Para este banner ser rápido, vamos focar em mostrar o DESAFIO
-                    pass
-
-                st.markdown(
-                    f"""
-                    <div style="background-color: #E8F4F8; padding: 20px; border-radius: 15px; border: 2px solid #0078D4; margin-bottom: 25px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <h2 style="margin: 0; color: #004B87; font-size: 24px;">🚀 DESAFIO LANÇADO!</h2>
-                            <span style="background-color: #0078D4; color: white; padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 20px;">
-                                {mult}x Pontos
-                            </span>
-                        </div>
-                        <p style="color: #1E1E1E; margin: 10px 0; font-size: 16px;">
-                            A coordenação definiu uma meta de <b>{meta_adesivos} adesivos</b> no peito para este turno. 
-                            Ao bater a meta, toda a sua equipe recebe o multiplicador de pontos em tempo real!
-                        </p>
-                        <div style="background-color: #D1EAF1; border-radius: 10px; height: 15px; width: 100%; margin-top: 10px;">
-                            <div style="background-color: #0078D4; height: 15px; width: 45%; border-radius: 10px;"></div>
-                        </div>
-                        <p style="text-align: right; margin: 5px 0 0 0; font-size: 12px; color: #004B87;">🏁 Meta: {meta_adesivos} adesivos</p>
+            st.markdown(
+                f"""
+                <div style="background-color: #E8F4F8; padding: 20px; border-radius: 15px; border: 2px solid #0078D4; margin-bottom: 25px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h2 style="margin: 0; color: #004B87; font-size: 24px;">🚀 DESAFIO LANÇADO!</h2>
+                        <span style="background-color: #0078D4; color: white; padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 20px;">
+                            {mult}x Pontos
+                        </span>
                     </div>
-                    """,
-                    unsafe_allow_html=True
-                )
-        except Exception:
-            pass
+                    <p style="color: #1E1E1E; margin: 10px 0; font-size: 16px;">
+                        A coordenação definiu uma meta de <b>{meta_adesivos} adesivos</b> no peito para este turno. 
+                        Ao bater a meta, toda a sua equipe recebe o multiplicador de pontos em tempo real!
+                    </p>
+                    <div style="background-color: #D1EAF1; border-radius: 10px; height: 15px; width: 100%; margin-top: 10px;">
+                        <div style="background-color: #0078D4; height: 15px; width: 45%; border-radius: 10px;"></div>
+                    </div>
+                    <p style="text-align: right; margin: 5px 0 0 0; font-size: 12px; color: #004B87;">🏁 Meta: {meta_adesivos} adesivos</p>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+    except Exception:
+        pass
 
     if "turno_ativo" not in st.session_state: st.session_state["turno_ativo"] = False
     if "turno_id_atual" not in st.session_state: st.session_state["turno_id_atual"] = None
@@ -348,7 +327,8 @@ def script_a_selva():
             data_acao = st.date_input("Data em que a ação/foto foi feita")
         with col_t:
             turno_acao = st.selectbox("Turno da Ação", ["Manhã", "Tarde", "Noite", "Integral"])
-            tipo_pub = st.selectbox("Qual o formato do post?", ["Story", "Reel", "Feed", "Status"])
+
+        tipo_pub = st.selectbox("Qual o formato do post?", ["Story", "Reel", "Feed", "Status"])
 
         col_v, col_a = st.columns(2)
         with col_v:
@@ -381,30 +361,22 @@ def script_a_selva():
                         "turno_referencia": turno_acao,
                         "codigo_auditoria": codigo_auditoria,
                         "arquivo_comprovante": novo_nome_arquivo,
-                        "tipo_publicacao": tipo_pub,  # <--- SÓ ADICIONE ESTA LINHA AQUI
+                        "tipo_publicacao": tipo_pub,
                         "views": views,
                         "alcance": alcance
                     }).execute()
 
                     # 3. 🚀 MOTOR DE COMPRESSÃO DO SÉNIOR (Magia em Memória)
-                    # Abre a imagem enviada pelo utilizador
                     img_original = Image.open(comprovante)
 
-                    # Se for PNG (RGBA), converte para RGB para poder salvar como JPEG
                     if img_original.mode in ("RGBA", "P"):
                         img_original = img_original.convert("RGB")
 
-                    # Redimensiona a imagem mantendo a proporção (Largura máxima de 800px)
                     img_original.thumbnail((800, 800))
-
-                    # Cria um buffer na memória para salvar os bytes comprimidos sem gravar nada no disco rígido
                     buffer_memoria = io.BytesIO()
-
-                    # Guarda a imagem no buffer como JPEG, reduzindo a qualidade para 60% (super leve e legível)
                     img_original.save(buffer_memoria, format="JPEG", quality=60)
                     file_bytes = buffer_memoria.getvalue()
 
-                    # 4. UPLOAD DOS BYTES COMPRIMIDOS PARA O BUCKET DO SUPABASE
                     supabase.storage.from_("comprovantes").upload(
                         path=novo_nome_arquivo,
                         file=file_bytes,
@@ -419,33 +391,43 @@ def script_a_selva():
                 except Exception as e:
                     st.error(f"Erro no processamento. Detalhe: {e}")
 
-        # Histórico de aprovações
-        st.markdown("---")
-        st.subheader("📜 Seu Histórico de Disparos")
-        try:
-            resp_historico = supabase.table("registro_influencia_digital").select(
-                "data_referencia, tipo_publicacao, views, alcance"  # <--- Mudamos aqui
-            ).eq("colaborador_id", st.session_state["usuario_id"]).order(
-                "id", desc=True
-            ).limit(5).execute()
+    # Histórico de aprovações
+    st.markdown("---")
+    st.subheader("📜 Seu Histórico de Disparos")
+    try:
+        resp_historico = supabase.table("registro_influencia_digital").select(
+            "data_referencia, tipo_publicacao, views, alcance"
+        ).eq("colaborador_id", st.session_state["usuario_id"]).order(
+            "id", desc=True
+        ).limit(5).execute()
 
-            if resp_historico.data:
-                df_hist = pd.DataFrame(resp_historico.data)
-                df_hist.columns = ["Data Ref.", "Formato", "Views", "Alcance"]  # <--- Renomeamos aqui
-                st.dataframe(df_hist, use_container_width=True)
-            else:
-                st.info("Nenhuma postagem registada ainda. Vá para as redes! 🦁")
-        except:
-            pass
+        if resp_historico.data:
+            df_hist = pd.DataFrame(resp_historico.data)
+            df_hist.columns = ["Data Ref.", "Formato", "Views", "Alcance"]
+            st.dataframe(df_hist, use_container_width=True)
+        else:
+            st.info("Nenhuma postagem registada ainda. Vá para as redes! 🦁")
+    except:
+        pass
 
 # --- Script 3: O Olho da Leoa (Sala de Guerra) ---
 def script_o_olho_da_leoa():
-    st.title("👁️ O Olho da Leoa - Comando C3")
-    st.write("A central de inteligência e controle de toda a operação.")
+    # === CABEÇALHO COM BOTÃO DE REFRESH ===
+    col_titulo, col_refresh = st.columns([4, 1])
+
+    with col_titulo:
+        st.title("👁️ O Olho da Leoa - Comando C3")
+        st.write("A central de inteligência e controlo de toda a operação.")
+
+    with col_refresh:
+        st.markdown("<br>", unsafe_allow_html=True)  # Pequeno truque para alinhar o botão com o título
+        if st.button("🔄 Atualizar Painel", use_container_width=True, type="primary"):
+            st.rerun()
+
     st.markdown("---")
 
     aba1, aba2, aba3, aba4, aba5 = st.tabs([
-        "👁️ Visão", "👑 Gamificação", "🔎 O Covil", "🐾 Despacho", "💰 O Tesouro (Controle de Turnos e AC)"
+        "👁️ Visão", "👑 Gamificação", "🔎 O Covil", "🐾 Despacho", "💰 O Tesouro (Controlo de Turnos e AC)"
     ])
 
     # === 1. MÓDULO VISÃO (SUPER DASHBOARD EXECUTIVO) ===
@@ -620,8 +602,6 @@ def script_o_olho_da_leoa():
                         ranking_final['Nome'] = ranking_final['id_pessoa'].map(dict_nomes)
                         ranking_final['Patente'] = ranking_final['id_pessoa'].map(dict_patentes)
 
-                        # Nota do Sénior: Num sistema real, cruzarias isto com uma coluna 'data_fim' no turno.
-                        # Por agora, colocamos um placeholder dinâmico.
                         ranking_final['Estado Atual'] = "Turno Encerrado 🔴"
                         ranking_final.rename(columns={'Pontos': '🔥 Pontuação Geral'}, inplace=True)
                     else:
@@ -705,9 +685,11 @@ def script_o_olho_da_leoa():
                             df_role = df_role.sort_values(by="🔥 Pontuação Geral", ascending=False).reset_index(
                                 drop=True)
                             df_role.index = df_role.index + 1  # O Ranking começa em 1
-                            # Mostramos apenas as colunas que importam para a leitura limpa
-                            st.dataframe(df_role[["Nome", "Estado Atual", "🔥 Pontuação Geral"]],
-                                         use_container_width=True)
+
+                            if role_keyword == "Influenciador" and "Story" in df_role.columns:
+                                st.dataframe(df_role[["Nome", "Estado Atual", "Story", "Reel", "Feed", "🔥 Pontuação Geral"]], use_container_width=True)
+                            else:
+                                st.dataframe(df_role[["Nome", "Estado Atual", "🔥 Pontuação Geral"]], use_container_width=True)
                         else:
                             st.info(f"Sem dados operacionais para a patente de {role_keyword} neste momento.")
 
@@ -930,7 +912,8 @@ def script_o_olho_da_leoa():
                         nome_colab = st.text_input("Nome Completo / Apelido")
                         telefone_colab = st.text_input("Telefone (WhatsApp)")
                     with col_t:
-                        tag_colab = st.selectbox("Patente (Função)", ["Motorista", "Influenciador", "Apoio", "Gestor de Inside", "Coordenacao"])
+                        # LISTA COMPLETA COM LÍDER E GESTOR DE INSIDE
+                        tag_colab = st.selectbox("Patente (Função)", ["Líder", "Motorista", "Influenciador", "Apoio", "Gestor de Inside", "Coordenacao"])
 
                     if st.form_submit_button("Cadastrar Membro"):
                         if nome_colab:
@@ -960,7 +943,8 @@ def script_o_olho_da_leoa():
                             novo_nome = st.text_input("Nome", value=dados_atuais['nome'])
                             novo_telefone = st.text_input("Telefone (WhatsApp)", value=dados_atuais.get('telefone', ''))
                         with col_t:
-                            patentes = ["Motorista", "Influenciador", "Apoio", "Coordenacao"]
+                            # ESPELHANDO A LISTA COMPLETA
+                            patentes = ["Líder", "Motorista", "Influenciador", "Apoio", "Gestor de Inside", "Coordenacao"]
                             idx_patente = patentes.index(dados_atuais['tag']) if dados_atuais['tag'] in patentes else 0
                             nova_tag = st.selectbox("Nova Patente", patentes, index=idx_patente)
 
